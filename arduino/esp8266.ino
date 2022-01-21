@@ -1,4 +1,4 @@
-a /*********
+/*********
   Rui Santos
   Complete project details at https://randomnerdtutorials.com/esp8266-dht11dht22-temperature-and-humidity-web-server-with-arduino-ide/
 *********/
@@ -17,11 +17,31 @@ a /*********
 #include <FS.h>
 #include <LittleFS.h>
 #include <CertStoreBearSSL.h>
+#include <InfluxDbClient.h>
+#include <InfluxDbCloud.h>
 
-    // Replace with your network credentials
-    const char *ssid = "<SEU WIFI>";
-const char *password = "<SUA SENHA>";
-const char *mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
+
+// InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
+#define INFLUXDB_URL "https://us-east-1-1.aws.cloud2.influxdata.com"
+// InfluxDB v2 server or cloud API token (Use: InfluxDB UI -> Data -> API Tokens -> <select token>)
+#define INFLUXDB_TOKEN "wsCGjok61f5UJGKmY3YYL2b3rNnyg69deuhQ5hDXQNIYyi19RM6RCP4gctAV8b51Kk6ptwgy9zoGeK3R6K7N1w=="
+// InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
+#define INFLUXDB_ORG "lucasvbt@trt3.jus.br"
+// InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
+#define INFLUXDB_BUCKET "lucasvbt's Bucket"
+#define DEVICE "ESP8266"
+#define INFLUXDB_CLIENT_DEBUG
+
+// Data point
+Point sensor("sensor");
+
+// InfluxDB client instance with preconfigured InfluxCloud certificate
+InfluxDBClient influxClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
+
+// Replace with your network credentials
+const char* ssid = "TIPO-NET-2";
+const char* password = "thedome2014";
+const char* mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
 
 // A single, global CertStore which can be used by all connections.
 // Needs to stay live the entire time any of the WiFiClientBearSSLs
@@ -29,17 +49,15 @@ const char *mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
 BearSSL::CertStore certStore;
 
 //WiFiClientSecure espClient;
-PubSubClient *client;
+PubSubClient * client;
 unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (500)
-char msg_temp[MSG_BUFFER_SIZE];
-char msg_hum[MSG_BUFFER_SIZE];
-int value = 0;
+char msg[MSG_BUFFER_SIZE];
 
-#define DHTPIN 4 // Digital pin connected to the DHT sensor
+#define DHTPIN 4     // Digital pin connected to the DHT sensor
 
 // Uncomment the type of sensor in use:
-#define DHTTYPE DHT11 // DHT 11
+#define DHTTYPE    DHT11     // DHT 11
 //#define DHTTYPE    DHT22     // DHT 22 (AM2302)
 //#define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
@@ -54,7 +72,7 @@ AsyncWebServer server(80);
 
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
-unsigned long previousMillis = 0; // will store last time DHT was updated
+unsigned long previousMillis = 0;    // will store last time DHT was updated
 
 // Updates DHT readings every 10 seconds
 const long interval = 10000;
@@ -84,27 +102,21 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
   <h2>ESP8266 DHT Server</h2>
   <p>
-    <i class="fas fa-thermometer-half" style="color:#059e8a;"></i>
-    <span class="dht-labels">Temperature</span>
+    <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> 
+    <span class="dht-labels">Temperature</span> 
     <span id="temperature">%TEMPERATURE%</span>
     <sup class="units">&deg;C</sup>
   </p>
   <p>
-    <i class="fas fa-tint" style="color:#00add6;"></i>
+    <i class="fas fa-tint" style="color:#00add6;"></i> 
     <span class="dht-labels">Humidity</span>
     <span id="humidity">%HUMIDITY%</span>
     <sup class="units">%</sup>
   </p>
   <p>
-    <i class="fas fa-handshake-alt-slash" style="color:#00add6;"></i>
-    <span class="dht-labels">Temperatura Broker:</span>
-    <span id="mqtt_temp_msg">%MQTT_TEMP%</span>
-    <sup class="units"></sup>
-  </p>
-  <p>
-    <i class="fas fa-handshake-alt-slash" style="color:#00add6;"></i>
-    <span class="dht-labels">Humidade Broker:</span>
-    <span id="mqtt_hum_msg">%MQTT_HUM%</span>
+    <i class="fas fa-wifi" style="color:#00add6;"></i> 
+    <span class="dht-labels">Broker:</span>
+    <span id="mqtt">#</span>
     <sup class="units"></sup>
   </p>
 </body>
@@ -124,21 +136,10 @@ setInterval(function ( ) {
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       console.log(this.responseText);
-      document.getElementById("mqtt_temp_msg").innerHTML = this.responseText;
+      document.getElementById("mqtt").innerHTML = this.responseText;
     }
   };
-  xhttp.open("GET", "/mqtt/temp", true);
-  xhttp.send();
-}, 10000 ) ;
-setInterval(function ( ) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      console.log(this.responseText);
-      document.getElementById("mqtt_hum_msg").innerHTML = this.responseText;
-    }
-  };
-  xhttp.open("GET", "/mqtt/hum", true);
+  xhttp.open("GET", "/mqtt", true);
   xhttp.send();
 }, 10000 ) ;
 setInterval(function ( ) {
@@ -155,38 +156,29 @@ setInterval(function ( ) {
 </html>)rawliteral";
 
 // Replaces placeholder with DHT values
-String processor(const String &var)
-{
+String processor(const String& var) {
   //Serial.println(var);
-  if (var == "TEMPERATURE")
-  {
+  if (var == "TEMPERATURE") {
     return String(t);
   }
-  else if (var == "HUMIDITY")
-  {
+  else if (var == "HUMIDITY") {
     return String(h);
   }
-  else if (var == "MQTT_TEMP")
-  {
-    return String(msg_temp);
-  }
-  else if (var == "MQTT_HUM")
-  {
-    return String(msg_hum);
+  else if (var == "MQTT") {
+    return String(msg);
   }
   return String();
 }
 
-void setDateTime()
-{
+
+void setDateTime() {
   // You can use your own timezone, but the exact time is not used at all.
   // Only the date is needed for validating the certificates.
   configTime(TZ_America_Sao_Paulo, "pool.ntp.org", "time.nist.gov");
 
   Serial.print("Waiting for NTP time sync: ");
   time_t now = time(nullptr);
-  while (now < 8 * 3600 * 2)
-  {
+  while (now < 8 * 3600 * 2) {
     delay(100);
     Serial.print(".");
     now = time(nullptr);
@@ -198,51 +190,42 @@ void setDateTime()
   Serial.printf("%s %s", tzname[0], asctime(&timeinfo));
 }
 
-void callback(char *topic, byte *payload, unsigned int length)
-{
+void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++)
-  {
+  for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
 
   // Switch on the LED if the first character is present
-  if ((char)payload[0] != NULL)
-  {
+  if ((char)payload[0] != NULL) {
     digitalWrite(LED_BUILTIN, LOW); // Turn the LED on (Note that LOW is the voltage level
     // but actually the LED is on; this is because
     // it is active low on the ESP-01)
     delay(500);
     digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
-  }
-  else
-  {
+  } else {
     digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
   }
 }
 
-void reconnect()
-{
+
+void reconnect() {
   // Loop until we’re reconnected
-  while (!client->connected())
-  {
+  while (!client->connected()) {
     Serial.print("Attempting MQTT connection…");
-    String clientId = "ESP8266Client - MyClient";
+    String clientId = "DVES_081C09";
     // Attempt to connect
     // Insert your password
-    if (client->connect(clientId.c_str(), "admin", "Tasmota1"))
-    {
+    if (client->connect(clientId.c_str(), "admin", "Tasmota1")) {
       Serial.println("connected");
       // Once connected, publish an announcement…
       client->publish("testTopic", "hello world");
       // … and resubscribe
       client->subscribe("testTopic");
-    }
-    else
-    {
+    } else {
       Serial.print("failed, rc = ");
       Serial.print(client->state());
       Serial.println(" try again in 5 seconds");
@@ -252,8 +235,9 @@ void reconnect()
   }
 }
 
-void setup()
-{
+
+
+void setup() {
   // Serial port for debugging purposes
   Serial.begin(115200);
   dht.begin();
@@ -261,8 +245,7 @@ void setup()
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
   Serial.println("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println(".");
   }
@@ -277,8 +260,7 @@ void setup()
 
   int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
   Serial.printf("Number of CA certs read: %d\n", numCerts);
-  if (numCerts == 0)
-  {
+  if (numCerts == 0) {
     Serial.printf("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
     return; // Can't connect to anything w/o certs!
   }
@@ -292,32 +274,42 @@ void setup()
   client->setServer(mqtt_server, 8883);
   client->setCallback(callback);
 
+  // Check influxconnection
+  if (influxClient.validateConnection()) {
+    Serial.print("Connected to InfluxDB: ");
+    Serial.println(influxClient.getServerUrl());
+  } else {
+    Serial.print("InfluxDB connection failed: ");
+    Serial.println(influxClient.getLastErrorMessage());
+  }
+  // Add tags
+  sensor.addTag("device", DEVICE);
+  sensor.addTag("local", "Home");
   // Route for root / web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/html", index_html, processor); });
-  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(t).c_str()); });
-  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(h).c_str()); });
-  server.on("/mqtt/temp", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(msg_temp).c_str()); });
-  server.on("/mqtt/hum", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(msg_hum).c_str()); });
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/html", index_html, processor);
+  });
+  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/plain", String(t).c_str());
+  });
+  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/plain", String(h).c_str());
+  });
+  server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/plain", String(msg).c_str());
+  });
   // Start server
   server.begin();
 }
 
-void loop()
-{
-  if (!client->connected())
-  {
+void loop() {
+  if (!client->connected()) {
     reconnect();
   }
   client->loop();
   unsigned long now = millis();
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval)
-  {
+  if (currentMillis - previousMillis >= interval) {
     // save the last time you updated the DHT values
     previousMillis = currentMillis;
     // Read temperature as Celsius (the default)
@@ -325,38 +317,26 @@ void loop()
     // Read temperature as Fahrenheit (isFahrenheit = true)
     //float newT = dht.readTemperature(true);
     // if temperature read failed, don't change t value
-    if (isnan(newT))
-    {
+    if (isnan(newT)) {
       Serial.println("Failed to read from DHT sensor!");
     }
-    else
-    {
+    else {
       t = newT;
-      Serial.println(t);
     }
     // Read Humidity
     float newH = dht.readHumidity();
     // if humidity read failed, don't change h value
-    if (isnan(newH))
-    {
+    if (isnan(newH)) {
       Serial.println("Failed to read from DHT sensor!");
     }
-    else
-    {
+    else {
       h = newH;
-      Serial.println(h);
     }
-    if (now - lastMsg > 2000)
-    {
-      lastMsg = now;
-      ++value;
-      snprintf(msg_temp, MSG_BUFFER_SIZE, "temp #%.2f", t);
-      Serial.print("Publish message: ");
-      Serial.println(msg_temp);
-      client->publish("temp", msg_temp);
-      snprintf(msg_hum, MSG_BUFFER_SIZE, "hum #%.2f", h);
-      client->publish("hum", msg_hum);
-      Serial.println(msg_hum);
+    snprintf (msg, MSG_BUFFER_SIZE, "{\"temp\":%.2f, \"hum\": %.f}", t, h);
+    if (now - lastMsg > 2000) {
+      lastMsg = now;      
+      Serial.println(msg);
+      client->publish("device/sensor", msg);
     }
   }
 }
