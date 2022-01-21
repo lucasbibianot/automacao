@@ -20,7 +20,6 @@
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
-
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_URL "https://us-east-1-1.aws.cloud2.influxdata.com"
 // InfluxDB v2 server or cloud API token (Use: InfluxDB UI -> Data -> API Tokens -> <select token>)
@@ -39,9 +38,9 @@ Point sensor("sensor");
 InfluxDBClient influxClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
 
 // Replace with your network credentials
-const char* ssid = "TIPO-NET-2";
-const char* password = "thedome2014";
-const char* mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
+const char *ssid = "TIPO-NET-2";
+const char *password = "thedome2014";
+const char *mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
 
 // A single, global CertStore which can be used by all connections.
 // Needs to stay live the entire time any of the WiFiClientBearSSLs
@@ -49,15 +48,15 @@ const char* mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
 BearSSL::CertStore certStore;
 
 //WiFiClientSecure espClient;
-PubSubClient * client;
+PubSubClient *client;
 unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (500)
 char msg[MSG_BUFFER_SIZE];
 
-#define DHTPIN 4     // Digital pin connected to the DHT sensor
+#define DHTPIN 4 // Digital pin connected to the DHT sensor
 
 // Uncomment the type of sensor in use:
-#define DHTTYPE    DHT11     // DHT 11
+#define DHTTYPE DHT11 // DHT 11
 //#define DHTTYPE    DHT22     // DHT 22 (AM2302)
 //#define DHTTYPE    DHT21     // DHT 21 (AM2301)
 
@@ -72,7 +71,7 @@ AsyncWebServer server(80);
 
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
-unsigned long previousMillis = 0;    // will store last time DHT was updated
+unsigned long previousMillis = 0; // will store last time DHT was updated
 
 // Updates DHT readings every 10 seconds
 const long interval = 10000;
@@ -156,29 +155,34 @@ setInterval(function ( ) {
 </html>)rawliteral";
 
 // Replaces placeholder with DHT values
-String processor(const String& var) {
+String processor(const String &var)
+{
   //Serial.println(var);
-  if (var == "TEMPERATURE") {
+  if (var == "TEMPERATURE")
+  {
     return String(t);
   }
-  else if (var == "HUMIDITY") {
+  else if (var == "HUMIDITY")
+  {
     return String(h);
   }
-  else if (var == "MQTT") {
+  else if (var == "MQTT")
+  {
     return String(msg);
   }
   return String();
 }
 
-
-void setDateTime() {
+void setDateTime()
+{
   // You can use your own timezone, but the exact time is not used at all.
   // Only the date is needed for validating the certificates.
   configTime(TZ_America_Sao_Paulo, "pool.ntp.org", "time.nist.gov");
 
   Serial.print("Waiting for NTP time sync: ");
   time_t now = time(nullptr);
-  while (now < 8 * 3600 * 2) {
+  while (now < 8 * 3600 * 2)
+  {
     delay(100);
     Serial.print(".");
     now = time(nullptr);
@@ -190,42 +194,51 @@ void setDateTime() {
   Serial.printf("%s %s", tzname[0], asctime(&timeinfo));
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char *topic, byte *payload, unsigned int length)
+{
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++)
+  {
     Serial.print((char)payload[i]);
   }
   Serial.println();
 
   // Switch on the LED if the first character is present
-  if ((char)payload[0] != NULL) {
+  if ((char)payload[0] != NULL)
+  {
     digitalWrite(LED_BUILTIN, LOW); // Turn the LED on (Note that LOW is the voltage level
     // but actually the LED is on; this is because
     // it is active low on the ESP-01)
     delay(500);
     digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
-  } else {
+  }
+  else
+  {
     digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
   }
 }
 
-
-void reconnect() {
+void reconnect()
+{
   // Loop until we’re reconnected
-  while (!client->connected()) {
+  while (!client->connected())
+  {
     Serial.print("Attempting MQTT connection…");
     String clientId = "DVES_081C09";
     // Attempt to connect
     // Insert your password
-    if (client->connect(clientId.c_str(), "admin", "Tasmota1")) {
+    if (client->connect(clientId.c_str(), "admin", "Tasmota1"))
+    {
       Serial.println("connected");
       // Once connected, publish an announcement…
       client->publish("testTopic", "hello world");
       // … and resubscribe
       client->subscribe("testTopic");
-    } else {
+    }
+    else
+    {
       Serial.print("failed, rc = ");
       Serial.print(client->state());
       Serial.println(" try again in 5 seconds");
@@ -235,9 +248,23 @@ void reconnect() {
   }
 }
 
+void influx_reconnect()
+{
+  // Check influxconnection
+  if (influxClient.validateConnection())
+  {
+    Serial.print("Connected to InfluxDB: ");
+    Serial.println(influxClient.getServerUrl());
+  }
+  else
+  {
+    Serial.print("InfluxDB connection failed: ");
+    Serial.println(influxClient.getLastErrorMessage());
+  }
+}
 
-
-void setup() {
+void setup()
+{
   // Serial port for debugging purposes
   Serial.begin(115200);
   dht.begin();
@@ -245,7 +272,8 @@ void setup() {
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
   Serial.println("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(1000);
     Serial.println(".");
   }
@@ -260,7 +288,8 @@ void setup() {
 
   int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
   Serial.printf("Number of CA certs read: %d\n", numCerts);
-  if (numCerts == 0) {
+  if (numCerts == 0)
+  {
     Serial.printf("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
     return; // Can't connect to anything w/o certs!
   }
@@ -274,42 +303,37 @@ void setup() {
   client->setServer(mqtt_server, 8883);
   client->setCallback(callback);
 
-  // Check influxconnection
-  if (influxClient.validateConnection()) {
-    Serial.print("Connected to InfluxDB: ");
-    Serial.println(influxClient.getServerUrl());
-  } else {
-    Serial.print("InfluxDB connection failed: ");
-    Serial.println(influxClient.getLastErrorMessage());
-  }
   // Add tags
   sensor.addTag("device", DEVICE);
   sensor.addTag("local", "Home");
   // Route for root / web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/html", index_html, processor);
-  });
-  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/plain", String(t).c_str());
-  });
-  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/plain", String(h).c_str());
-  });
-  server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/plain", String(msg).c_str());
-  });
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/html", index_html, processor); });
+  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", String(t).c_str()); });
+  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", String(h).c_str()); });
+  server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", String(msg).c_str()); });
   // Start server
   server.begin();
 }
 
-void loop() {
-  if (!client->connected()) {
+void loop()
+{
+  if (!client->connected())
+  {
     reconnect();
   }
   client->loop();
+  if (influxClient.validateConnection())
+  {
+    influx_reconnect();
+  }
   unsigned long now = millis();
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= interval)
+  {
     // save the last time you updated the DHT values
     previousMillis = currentMillis;
     // Read temperature as Celsius (the default)
@@ -317,26 +341,39 @@ void loop() {
     // Read temperature as Fahrenheit (isFahrenheit = true)
     //float newT = dht.readTemperature(true);
     // if temperature read failed, don't change t value
-    if (isnan(newT)) {
+    if (isnan(newT))
+    {
       Serial.println("Failed to read from DHT sensor!");
     }
-    else {
+    else
+    {
       t = newT;
     }
     // Read Humidity
     float newH = dht.readHumidity();
     // if humidity read failed, don't change h value
-    if (isnan(newH)) {
+    if (isnan(newH))
+    {
       Serial.println("Failed to read from DHT sensor!");
     }
-    else {
+    else
+    {
       h = newH;
     }
-    snprintf (msg, MSG_BUFFER_SIZE, "{\"temp\":%.2f, \"hum\": %.f}", t, h);
-    if (now - lastMsg > 2000) {
-      lastMsg = now;      
+    snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\":%.2f, \"hum\": %.f}", t, h);
+    if (now - lastMsg > 2000)
+    {
+      lastMsg = now;
       Serial.println(msg);
       client->publish("device/sensor", msg);
+      sensor.addField("temp", t);
+      sensor.addField("hum", h);
+      // Write point
+      if (!influxClient.writePoint(sensor))
+      {
+        Serial.print("InfluxDB write failed: ");
+        Serial.println(influxClient.getLastErrorMessage());
+      }
     }
   }
 }
