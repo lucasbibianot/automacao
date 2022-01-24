@@ -48,6 +48,11 @@ Rename your folder from ESPAsyncTCP-master to ESPAsyncTCP
 Move the ESPAsyncTCP folder to your Arduino IDE installation libraries folder
 Finally, re-open your Arduino IDE
 
+
+## Cliente Python
+Foi implementado um cliente Python utilizando a biblioteca `paho-mqtt`
+
+
 **Referências:**
 
 - https://randomnerdtutorials.com/esp8266-dht11dht22-temperature-and-humidity-web-server-with-arduino-ide/
