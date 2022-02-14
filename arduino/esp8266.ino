@@ -180,14 +180,18 @@ void write_default_config(File &configFile) {
 }
 
 boolean loadConfig(DynamicJsonDocument &doc, size_t &size) {
-  File configFile = LittleFS.open("/config.json", "w+");
+  File configFile = LittleFS.open("/config.json", "r");
+  if (!configFile) {
+    configFile = LittleFS.open("/config.json", "w+");  
+    configFile.close();
+    File configFile = LittleFS.open("/config.json", "r");
+  }
   size = configFile.size();
   if (size > 2048) {
     Serial.println("Config file size is too large");
     return false;
   }
-  configFile.close();
-  configFile = LittleFS.open("/config.json", "r");
+  
   auto error = deserializeJson(doc, configFile);
   serializeJsonPretty(doc, Serial);
   if (error || !doc.containsKey("soft-ap")) {
