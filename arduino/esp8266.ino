@@ -16,32 +16,12 @@
 #include <TZ.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <ArduinoJson.h>
 #include <CertStoreBearSSL.h>
-#include <InfluxDbClient.h>
-#include <InfluxDbCloud.h>
 
-// InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_URL "https://us-east-1-1.aws.cloud2.influxdata.com"
-// InfluxDB v2 server or cloud API token (Use: InfluxDB UI -> Data -> API Tokens -> <select token>)
-#define INFLUXDB_TOKEN "wsCGjok61f5UJGKmY3YYL2b3rNnyg69deuhQ5hDXQNIYyi19RM6RCP4gctAV8b51Kk6ptwgy9zoGeK3R6K7N1w=="
-// InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "lucasvbt@trt3.jus.br"
-// InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "lucasvbt's Bucket"
-#define DEVICE "ESP8266"
-#define INFLUXDB_CLIENT_DEBUG
-
-// Data point
-Point sensor("sensor");
-
-// InfluxDB client instance with preconfigured InfluxCloud certificate
-InfluxDBClient influxClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
-
-// Replace with your network credentials
-const char *ssid = "TIPO-NET-2";
-const char *password = "thedome2014";
-const char *mqtt_server = "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud";
-
+size_t capacity;
+DynamicJsonDocument config(2048);
+unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
 // A single, global CertStore which can be used by all connections.
 // Needs to stay live the entire time any of the WiFiClientBearSSLs
 // are present.
@@ -52,9 +32,7 @@ PubSubClient *client;
 unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (500)
 char msg[MSG_BUFFER_SIZE];
-
 #define DHTPIN 4 // Digital pin connected to the DHT sensor
-
 // Uncomment the type of sensor in use:
 #define DHTTYPE DHT11 // DHT 11
 //#define DHTTYPE    DHT22     // DHT 22 (AM2302)
@@ -75,7 +53,6 @@ unsigned long previousMillis = 0; // will store last time DHT was updated
 
 // Updates DHT readings every 10 seconds
 const long interval = 10000;
-
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
@@ -115,7 +92,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <p>
     <i class="fas fa-wifi" style="color:#00add6;"></i> 
     <span class="dht-labels">Broker:</span>
-    <span id="mqtt">#</span>
+    <span id="mqtt">%MQTT%</span>
     <sup class="units"></sup>
   </p>
 </body>
@@ -170,7 +147,73 @@ String processor(const String &var)
   {
     return String(msg);
   }
+  else if (var == "JSON_STRING") {
+    String json_string;
+    serializeJsonPretty(config, json_string);
+    return json_string;
+  }
   return String();
+}
+
+void write_default_config(File &configFile) {
+  configFile = LittleFS.open("/config.json", "w");
+  const char default_config[] = R"rawliteral(
+  {
+    "wifi-ssid": "",
+    "wifi-key": "",
+    "topic": "device/sensor/",
+    "topic_subscribe": "device/sensor//cmd",
+    "mqtt_server": "",
+    "mqtt_server_port": "",
+    "mqtt_tag1": "device",
+    "mqtt_tag2": "local",
+    "mqtt_client_id": "",
+    "mqtt_user": "",
+    "mqtt_password": "",
+    "soft-ap": "ESP-123456"
+  })rawliteral";
+  Serial.println("Failed to open config file");
+  Serial.println("Loading default config file");
+  configFile.print(default_config);
+  delay(5);
+  configFile.close();
+}
+
+boolean loadConfig(DynamicJsonDocument &doc, size_t &size) {
+  File configFile = LittleFS.open("/config.json", "r");
+  size = configFile.size();
+  if (size > 2048) {
+    Serial.println("Config file size is too large");
+    return false;
+  }
+  auto error = deserializeJson(doc, configFile);
+  serializeJsonPretty(doc, Serial);
+  if (error || !doc.containsKey("soft-ap")) {
+    configFile.close();
+    write_default_config(configFile);
+    configFile = LittleFS.open("/config.json", "r");
+    auto error = deserializeJson(doc, configFile);
+  }
+  configFile.close();
+  return true;
+}
+
+bool saveConfig(DynamicJsonDocument &doc, String novo) {
+  auto error = deserializeJson(doc, novo);
+  if (!error) {
+    File configFile = LittleFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("Failed to open config file for writing");
+      return false;
+    }
+    size_t val = serializeJson(doc, configFile);
+    configFile.close();
+    Serial.println("Reniciando");
+    ESP.restart();
+    return true;
+  }
+  return false;
+
 }
 
 void setDateTime()
@@ -226,16 +269,12 @@ void reconnect()
   while (!client->connected())
   {
     Serial.print("Attempting MQTT connection…");
-    String clientId = "DVES_081C09";
     // Attempt to connect
     // Insert your password
-    if (client->connect(clientId.c_str(), "admin", "Tasmota1"))
+    if (client->connect(config["mqtt_client_id"], config["mqtt_user"], config["mqtt_password"]))
     {
       Serial.println("connected");
-      // Once connected, publish an announcement…
-      client->publish("testTopic", "hello world");
-      // … and resubscribe
-      client->subscribe("testTopic");
+      client->subscribe(config["topic_subscribe"]);
     }
     else
     {
@@ -248,132 +287,202 @@ void reconnect()
   }
 }
 
-void influx_reconnect()
-{
-  // Check influxconnection
-  if (influxClient.validateConnection())
+void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if (!index) {
+    Serial.printf("Update Start: %s\n", filename.c_str());
+    Update.runAsync(true);
+    if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
+      Update.printError(Serial);
+    }
+  }
+  if (!Update.hasError()) {
+    if (Update.write(data, len) != len) {
+      Update.printError(Serial);
+    }
+  }
+  if (final) {
+    if (Update.end(true)) {
+      Serial.printf("Update Success: %uB\n", index + len);
+    } else {
+      Update.printError(Serial);
+    }
+  }
+}
+
+void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+  if (!index) {
+    Serial.printf("BodyStart: %u B\n", total);
+  }
+  for (size_t i = 0; i < len; i++) {
+    Serial.write(data[i]);
+  }
+  if (index + len == total) {
+    Serial.printf("BodyEnd: %u B\n", total);
+  }
+}
+
+void handleConfig(AsyncWebServerRequest * request) {
+  int params = request->params();
+  String message;
+  Serial.printf("%d params sent in\n", params);
+  for (int i = 0; i < params; i++)
   {
-    Serial.print("Connected to InfluxDB: ");
-    Serial.println(influxClient.getServerUrl());
+    AsyncWebParameter *p = request->getParam(i);
+    if (p->isFile())
+    {
+      Serial.printf("_FILE[%s]: %s, size: %u", p->name().c_str(), p->value().c_str(), p->size());
+    }
+    else if (p->isPost())
+    {
+      Serial.printf("_POST[%s]: %s", p->name().c_str(), p->value().c_str());
+      saveConfig(config, p->value().c_str());
+
+    }
+    else
+    {
+      Serial.printf("_GET[%s]: %s", p->name().c_str(), p->value().c_str());
+    }
+  }
+  if (request->hasParam("textarea", true))
+  {
+    message = request->getParam("textarea", true)->value();
   }
   else
   {
-    Serial.print("InfluxDB connection failed: ");
-    Serial.println(influxClient.getLastErrorMessage());
+    message = "not specified";
   }
+  request->send_P(200, "text/plain", "OK");
 }
 
 void setup()
 {
   // Serial port for debugging purposes
   Serial.begin(115200);
+  Serial.println("Inicio");
   dht.begin();
   LittleFS.begin();
+  if (loadConfig(config, capacity)) {
+    Serial.println("Carreguei as configurações");
+  }
   // Connect to Wi-Fi
-  WiFi.begin(ssid, password);
-  Serial.println("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(1000);
-    Serial.println(".");
+  const char *ssid = config["wifi-ssid"];
+  const char *wifi_key = config["wifi-key"];
+  if (*ssid == 0) {
+    const char *soft_ap = config["soft-ap"];
+    // Iniciar o SoftAP
+    WiFi.softAP(soft_ap);
+    Serial.println("Iniciar SoftAP");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.softAPIP());
+  } else {
+    operation_mode = 1;
+    Serial.printf("%s", ssid);
+    WiFi.begin(ssid, wifi_key);
+    Serial.println("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      delay(1000);
+      Serial.println(".");
+    }
+
+    // Print ESP8266 Local IP Address
+    Serial.println(WiFi.localIP());
+
+    setDateTime();
+    pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
+    // you can use the insecure mode, when you want to avoid the certificates
+    //espclient->setInsecure();
+
+    int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
+    Serial.printf("Number of CA certs read: %d\n", numCerts);
+    if (numCerts == 0)
+    {
+      Serial.printf("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
+      return; // Can't connect to anything w/o certs!
+    }
+
+    BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
+    // Integrate the cert store with this connection
+    bear->setCertStore(&certStore);
+
+    client = new PubSubClient(*bear);
+    const char* mqq_server = config["mqtt_server"];
+    Serial.printf("MQTT: %s", mqq_server);
+    client->setServer(mqq_server, (uint16_t) config["mqtt_server_port"]);
+    client->setCallback(callback);
+
+    // Route for root / web page
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest * request)
+    {
+      request->send_P(200, "text/html", index_html, processor);
+    });
+    server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest * request)
+    {
+      request->send_P(200, "text/plain", String(t).c_str());
+    });
+    server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest * request)
+    {
+      request->send_P(200, "text/plain", String(h).c_str());
+    });
+    server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest * request)
+    {
+      request->send_P(200, "text/plain", String(msg).c_str());
+    });
+
   }
-
-  // Print ESP8266 Local IP Address
-  Serial.println(WiFi.localIP());
-
-  setDateTime();
-  pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
-  // you can use the insecure mode, when you want to avoid the certificates
-  //espclient->setInsecure();
-
-  int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
-  Serial.printf("Number of CA certs read: %d\n", numCerts);
-  if (numCerts == 0)
-  {
-    Serial.printf("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
-    return; // Can't connect to anything w/o certs!
-  }
-
-  BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
-  // Integrate the cert store with this connection
-  bear->setCertStore(&certStore);
-
-  client = new PubSubClient(*bear);
-
-  client->setServer(mqtt_server, 8883);
-  client->setCallback(callback);
-
-  // Add tags
-  sensor.addTag("device", DEVICE);
-  sensor.addTag("local", "Home");
-  // Route for root / web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/html", index_html, processor); });
-  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(t).c_str()); });
-  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(h).c_str()); });
-  server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", String(msg).c_str()); });
+  server.on("/config", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/html", "<form method='POST' action='/config' enctype='x-www-form-urlencoded'><textarea name='textarea' rows='10' cols='50'>%JSON_STRING%</textarea><input type='submit' value='Salvar'></form>", processor);
+  });
+  server.on("/config", HTTP_POST, handleConfig);
   // Start server
   server.begin();
 }
 
 void loop()
 {
-  if (!client->connected())
-  {
-    reconnect();
-  }
-  client->loop();
-  /*if (influxClient.validateConnection()) {
-    influx_reconnect();
-  }**/
-  unsigned long now = millis();
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval)
-  {
-    // save the last time you updated the DHT values
-    previousMillis = currentMillis;
-    // Read temperature as Celsius (the default)
-    float newT = dht.readTemperature();
-    // Read temperature as Fahrenheit (isFahrenheit = true)
-    //float newT = dht.readTemperature(true);
-    // if temperature read failed, don't change t value
-    if (isnan(newT))
-    {
-      Serial.println("Failed to read from DHT sensor!");
-    }
-    else
-    {
-      t = newT;
-    }
-    // Read Humidity
-    float newH = dht.readHumidity();
-    // if humidity read failed, don't change h value
-    if (isnan(newH))
-    {
-      Serial.println("Failed to read from DHT sensor!");
-    }
-    else
-    {
-      h = newH;
-    }
-    snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\":%.2f, \"hum\": %.f}", t, h);
-    if (now - lastMsg > 2000)
-    {
-      lastMsg = now;
-      Serial.println(msg);
-      client->publish("device/lucas/sensor", msg);
-      /**
-      sensor.addField("temp", t);
-      sensor.addField("hum", h);
-      // Write point
-      if (!influxClient.writePoint(sensor)) {
-        Serial.print("InfluxDB write failed: ");
-        Serial.println(influxClient.getLastErrorMessage());
+  if (operation_mode == 1) {
+    if (client != 0) {
+      if (!client->connected())
+      {
+        reconnect();
       }
-      **/
+      client->loop();
+      unsigned long now = millis();
+      unsigned long currentMillis = millis();
+      if (currentMillis - previousMillis >= interval)
+      {
+        // save the last time you updated the DHT values
+        previousMillis = currentMillis;
+        // Read temperature as Celsius (the default)
+        float newT = dht.readTemperature();
+
+        if (isnan(newT))
+        {
+          Serial.println("Failed to read from DHT sensor!");
+        }
+        else
+        {
+          t = newT;
+        }
+        // Read Humidity
+        float newH = dht.readHumidity();
+        // if humidity read failed, don't change h value
+        if (isnan(newH))
+        {
+          Serial.println("Failed to read from DHT sensor!");
+        }
+        else
+        {
+          h = newH;
+        }
+        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\":%.2f, \"hum\": %.f}", t, h);
+        if (now - lastMsg > 2000)
+        {
+          lastMsg = now;
+          Serial.println(msg);
+          client->publish(config["topic"], msg);
+        }
+      }
     }
   }
 }
