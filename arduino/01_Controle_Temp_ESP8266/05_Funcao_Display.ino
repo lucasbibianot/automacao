@@ -34,6 +34,14 @@ void display_temp_config(float fltTempConfig, String strQtdBoot){
     lcd.print(strQtdBoot);
 } 
 
+void display_error(String &strMsgErro)  {
+    lcd.clear(); //limpa o display
+    lcd.setCursor(0,0); //posiciona o cursor na primeira coluna da linha 1  
+    lcd.print("Error: "); 
+    lcd.setCursor(0,1); //posiciona o cursor na primeira coluna da linha 1
+    lcd.print(strMsgErro);     
+}
+
  void display_vazio() {
     lcd.clear(); //limpa o display    
  } 

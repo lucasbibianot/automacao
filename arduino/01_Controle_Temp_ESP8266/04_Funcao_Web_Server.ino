@@ -131,7 +131,7 @@ void rotas_web_modo_1() {
             */
             config["temp"] = inputMessage;
             config["qtd_boot"] = "0";
-            saveConfig2(config);
+            updateConfig(config);
             
 
     /*

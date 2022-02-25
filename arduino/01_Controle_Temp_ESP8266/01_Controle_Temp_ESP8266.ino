@@ -40,7 +40,8 @@ void display_temp_hum(float &fltTemp, float &fltHum);
 void display_ip(String &strIP);
 void display_vazio();
 void display_temp_config(float fltTempConfig, String strQtdBoot);
-bool saveConfig2(DynamicJsonDocument &doc);
+bool updateConfig(DynamicJsonDocument &doc);
+void display_error(String &strMsgErro);
 
 
 unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
@@ -96,6 +97,8 @@ const long interval = 5000;
 const char* PARAM_INPUT_CONFIGTEMP = "input1";
 
 String LocalIpAdress;
+
+String strPubMsgErro = "";
 
 void setDateTime()
 {
@@ -158,37 +161,40 @@ void callback(char *topic, byte *payload, unsigned int length)
     */
 }
 
-void reconnect()
+void reconnect(String &strMsgErro)
 {
     // Loop until we’re reconnected
-    while (!client->connected())
-    {
-        #if debug == 1
-            Serial.print("Attempting MQTT connection…");
-        #endif
-            
-        // Attempt to connect
-        // Insert your password
-        if (client->connect(config["mqtt_client_id"], config["mqtt_user"], config["mqtt_password"]))
-        {
-            #if debug == 1
-                Serial.println("connected");
-            #endif
-                
-            client->subscribe(config["topic_subscribe"]);
-        }
-        else
-        {
-            #if debug == 1
-                Serial.print("failed, rc = ");
-                Serial.print(client->state());
-                Serial.println(" try again in 5 seconds");
-            #endif
-                
-            // Wait 5 seconds before retrying
-            delay(5000);
-        }
-    }
+    //while (!client->connected())
+    //{
+      #if debug == 1
+          Serial.print("Attempting MQTT connection…");
+      #endif
+          
+      // Attempt to connect
+      // Insert your password
+      if (client->connect(config["mqtt_client_id"], config["mqtt_user"], config["mqtt_password"]))
+      {
+          #if debug == 1
+              Serial.println("connected");
+          #endif
+              
+          client->subscribe(config["topic_subscribe"]);
+          strMsgErro = "";
+      }
+      else
+      {
+          #if debug == 1
+              Serial.print("failed, rc = ");
+              Serial.print(client->state());
+              Serial.println(" try again in 5 seconds");
+          #endif
+              
+          // Wait 5 seconds before retrying
+          //delay(5000);
+          strMsgErro = "Client Mqtt Off";
+          
+      }
+    //} fim loop
 }
 
 void setup()
@@ -214,6 +220,10 @@ void setup()
     lcd.clear(); //limpa o display
     lcd.setCursor(0,0); //posiciona o cursor na primeira coluna da linha 1
     lcd.print("Inicio");
+
+    if (strPubMsgErro != "") {
+        display_error(strPubMsgErro);
+    }
     //delay(3000);
     //lcd.clear(); //limpa o display
      
@@ -265,7 +275,7 @@ void setup()
         */
 
         config["qtd_boot"] = strQtdBoot;
-        saveConfig2(config);
+        updateConfig(config);
     } 
     // Connect to Wi-Fi
     const String ssid = config["wifi-ssid"];
@@ -312,12 +322,15 @@ void setup()
       //Serial.printf("Number of CA certs read: %d\n", numCerts);
       if (numCerts == 0)
       {
-        #if debug == 1
-            Serial.print("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
-        #endif
-            
-        return; // Can't connect to anything w/o certs!
+          #if debug == 1
+              Serial.print("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
+          #endif
+          strPubMsgErro = "No Certs";    
+          return; // Can't connect to anything w/o certs!
+      } else {
+         strPubMsgErro = "";
       }
+      
   
       BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
       // Integrate the cert store with this connection
@@ -342,121 +355,135 @@ void loop()
 {
     if (operation_mode == 1) {
 
-      if (client != 0) {
-          if (!client->connected())
-          {
-              reconnect();
-          }
-          client->loop();
-
-          unsigned long currentMillis = millis();
-          
-          //trata o bug do millis() zerar depois de 49 dias
-          if (currentMillis < previousMillis) {
-              previousMillis = 0;
-          }          
-          if (currentMillis < lngdebounceBotao) {
-              lngdebounceBotao = 0;
-          }              
-
-          estadoBotao = digitalRead(pinBotao);
-          if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
-              if (!estadoBotao && estadoBotaoAnt) {
-                  //contador ++;
-                  
-                  estadoAtual++;
-                  
-                  if (estadoAtual > 3) {
-                     estadoAtual = 1;
-                  }
-
-                  #if debug == 1  
-                    Serial.print("estadoAtual: ");
-                    Serial.println(estadoAtual);
-                  #endif          
-
-                  switch (estadoAtual) {    
-                        case 1: {
-                            #if debug == 1  
-                              Serial.println("case 1 ");
-                            #endif
-                            display_temp_hum(fltTemperatura, fltHumidade);
-                            break;
-                        }
-                        case 2: {
-                              #if debug == 1      
-                                  Serial.println("case 2 ");
-                              #endif
-                              display_ip(LocalIpAdress);
-                              break;
-                         }  
-                         case 3 : {
-                              display_temp_config(config["temp"], config["qtd_boot"]);  
-                              //display_temp_config(param["temp"], param["qtd_boot"]);  
-                              break;
-                         }
-                  }                    
-                  
-                  lngdebounceBotao = millis();
-              }
-          }         
-
-          //if (fltTemperatura < float(param["temp"])) {
-          if (fltTemperatura < float(config["temp"])) {
-              digitalWrite(pinRele, HIGH);
-          } else {
-              digitalWrite(pinRele, LOW);
-          }             
-          
-    
-
-          if (currentMillis - previousMillis >= interval)
-          {
-            
-              // Read temperature as Celsius (the default)
-              float newT = dht.readTemperature();
+      unsigned long currentMillis = millis();
       
-              if (!isnan(newT))
-              {
-                  fltTemperatura = newT;
-                  #if debug == 1
-                      Serial.print("fltTemperatura: ");
-                      Serial.println(fltTemperatura); 
-                  #endif    
-              }
-              // Read Humidity
-              float newH = dht.readHumidity();
-              // if humidity read failed, don't change h value
-              if (!isnan(newH))              
-              {
-                  fltHumidade = newH;
-                  #if debug == 1
-                      Serial.print("fltHumidade: ");
-                      Serial.println(fltHumidade);
-                  #endif
-              }
+      //trata o bug do millis() zerar depois de 49 dias
+      if (currentMillis < previousMillis) {
+          previousMillis = 0;
+      }          
+      if (currentMillis < lngdebounceBotao) {
+          lngdebounceBotao = 0;
+      }              
 
-              if (estadoAtual == 1) {
-                  display_temp_hum(fltTemperatura, fltHumidade);
-              }
+      estadoBotao = digitalRead(pinBotao);
+      if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+          if (!estadoBotao && estadoBotaoAnt) {
+              //contador ++;
               
-              //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f}", fltTemperatura, fltHumidade, float(param["temp"]));
-              snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f}", fltTemperatura, fltHumidade, float(config["temp"]));
-      
-              //if (currentMillis - previousMillis >= interval)
-              //{
-              #if debug == 1    
-                  Serial.println(msg);
-              #endif
-                  
-              client->publish(config["topic"], msg);
-            //}
+              estadoAtual++;
+              
+              if (estadoAtual > 4) {
+                 estadoAtual = 1;
+              }
 
-              // save the last time you updated the DHT values
-              previousMillis = currentMillis;            
+              #if debug == 1  
+                Serial.print("estadoAtual: ");
+                Serial.println(estadoAtual);
+              #endif          
+
+              switch (estadoAtual) {    
+                    case 1: {
+                        #if debug == 1  
+                          Serial.println("case 1 ");
+                        #endif
+                        display_temp_hum(fltTemperatura, fltHumidade);
+                        break;
+                    }
+                    case 2: {
+                          #if debug == 1      
+                              Serial.println("case 2 ");
+                          #endif
+                          display_ip(LocalIpAdress);
+                          break;
+                     }  
+                     case 3 : {
+                          display_temp_config(config["temp"], config["qtd_boot"]);  
+                          //display_temp_config(param["temp"], param["qtd_boot"]);  
+                          break;
+                     }
+                     case 4 : {
+                          display_error(strPubMsgErro);  
+                          break;
+                     }
+                     
+              }                    
+              
+              lngdebounceBotao = millis();
           }
+      }         
+
+      //if (fltTemperatura < float(param["temp"])) {
+      if (fltTemperatura < float(config["temp"])) {
+          digitalWrite(pinRele, HIGH);
+      } else {
+          digitalWrite(pinRele, LOW);
+      }             
+      
+
+
+      if (currentMillis - previousMillis >= interval)
+      {
         
-          estadoBotaoAnt = estadoBotao;
+          // Read temperature as Celsius (the default)
+          float newT = dht.readTemperature();
+  
+          if (!isnan(newT))
+          {
+              fltTemperatura = newT;
+              #if debug == 1
+                  Serial.print("fltTemperatura: ");
+                  Serial.println(fltTemperatura); 
+              #endif    
+          } 
+          else {
+              fltTemperatura = 0;
+          }
+          // Read Humidity
+          float newH = dht.readHumidity();
+          // if humidity read failed, don't change h value
+          if (!isnan(newH))              
+          {
+              fltHumidade = newH;
+              #if debug == 1
+                  Serial.print("fltHumidade: ");
+                  Serial.println(fltHumidade);
+              #endif
+          } 
+          else {
+              fltHumidade = 0;
+          }
+
+          if (estadoAtual == 1) {
+              display_temp_hum(fltTemperatura, fltHumidade);
+          }
+          
+          //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f}", fltTemperatura, fltHumidade, float(param["temp"]));
+          snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s}", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str());
+
+          //if (currentMillis - previousMillis >= interval)
+          //{
+          #if debug == 1    
+              Serial.println(msg);
+          #endif
+          
+          if (client != 0) {
+              if (!client->connected())
+              {
+                  reconnect(strPubMsgErro);
+              }
+              client->loop();          
+    
+              client->publish(config["topic"], msg);
+          } // se o cliente do mqtt esta conectado              
+          
+        //}
+
+          // save the last time you updated the DHT values
+          previousMillis = currentMillis;            
       }
+    
+      estadoBotaoAnt = estadoBotao;
+      
+      
     }
 }

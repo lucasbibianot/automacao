@@ -60,60 +60,24 @@ const char index_html[] PROGMEM = R"rawliteral(
         </p>
     </body>
     <script>
-        setInterval(function ( ) {
-          var xhttp = new XMLHttpRequest();
-          xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              document.getElementById("temperature").innerHTML = this.responseText;
-            }
-          };
-          xhttp.open("GET", "/temperature", true);
-          xhttp.send();
-        }, 8000 ) ;
-        
+            
         setInterval(function ( ) {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
               //console.log(this.responseText);
               document.getElementById("mqtt").innerHTML = this.responseText;
+
+              var myArr = JSON.parse(this.responseText);
+              document.getElementById("temp_config").innerHTML = myArr.temp_config;
+              document.getElementById("qtd_boot").innerHTML = myArr.qtd_boot;
+              document.getElementById("humidity").innerHTML = myArr.hum;
+              document.getElementById("temperature").innerHTML = myArr.temp;
             }
           };
           xhttp.open("GET", "/mqtt", true);
           xhttp.send();
-        }, 9000 ) ;
-        
-        setInterval(function ( ) {
-          var xhttp = new XMLHttpRequest();
-          xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              document.getElementById("humidity").innerHTML = this.responseText;
-            }
-          };
-          xhttp.open("GET", "/humidity", true);
-          xhttp.send();
-        }, 10000 ) ;
-        
-        setInterval(function ( ) {
-          var xhttp = new XMLHttpRequest();
-          xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              document.getElementById("temp_config").innerHTML = this.responseText;
-            }
-          };
-          xhttp.open("GET", "/temp_config", true);
-          xhttp.send();
-        }, 11000 ) ;
-        
-        setInterval(function ( ) {
-          var xhttp = new XMLHttpRequest();
-          xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              document.getElementById("qtd_boot").innerHTML = this.responseText;
-            }
-          };
-          xhttp.open("GET", "/qtd_boot", true);
-          xhttp.send();
-        }, 11000 ) ;        
+        }, 5000 ) ;
+
     </script>
 </html>)rawliteral";

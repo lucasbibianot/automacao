@@ -92,9 +92,11 @@ bool loadConfig(DynamicJsonDocument &doc) {
         #if debug == 1
             Serial.println("Config file size is too large");
         #endif
-            
+        strPubMsgErro = "File is large";            
         return false;
     }
+
+    strPubMsgErro = "";
   
     auto error = deserializeJson(doc, configFile);
     serializeJsonPretty(doc, Serial);
@@ -135,12 +137,15 @@ bool saveConfig(DynamicJsonDocument &doc, String novo) {
 
           #if debug == 1
               Serial.println("Failed to open config file for writing");
+              strPubMsgErro = "Failed file w";
           #endif
               
           return false;
         }
         size_t val = serializeJson(doc, configFile);
         configFile.close();
+
+        strPubMsgErro = "";
 
         #if debug == 1
             Serial.println("Reniciando");
@@ -153,7 +158,7 @@ bool saveConfig(DynamicJsonDocument &doc, String novo) {
     return false;
 }
 
-bool saveConfig2(DynamicJsonDocument &doc) {
+bool updateConfig(DynamicJsonDocument &doc) {
     
     File configFile = LittleFS.open("/config.json", "w");
     if (!configFile) {
@@ -161,11 +166,12 @@ bool saveConfig2(DynamicJsonDocument &doc) {
       #if debug == 1
           Serial.println("Failed to open config file for writing");
       #endif
-          
+      strPubMsgErro = "Failed file w";    
       return false;
     }
     size_t val = serializeJson(doc, configFile);
     configFile.close();
+    strPubMsgErro = "";
 
     return true;
 }
