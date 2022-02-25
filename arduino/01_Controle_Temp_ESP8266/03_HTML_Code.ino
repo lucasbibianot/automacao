@@ -41,6 +41,12 @@ const char index_html[] PROGMEM = R"rawliteral(
             <sup class="units"></sup>
         </p>
         <p>
+            <i class="fas fa-exclamation-triangle" style="color:#ff0000;"></i> 
+            <span class="dht-labels">Qtd Boot:</span>
+            <span id="qtd_boot">#</span>
+            <sup class="units"></sup>
+        </p>          
+        <p>
             <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> 
             <span class="dht-labels">Temp Config:</span>
             <span id="temp_config">#</span>
@@ -48,8 +54,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         </p>  
         <p>
             <form action="/get">
-                input1: <input type="text" name="input1">
-                <input type="submit" value="Submit">
+                Nova Temperatura: <input type="text" name="input1" style="font-size:24px" >
+                <input type="submit" value="Submit" >
             </form>
         </p>
     </body>
@@ -63,19 +69,19 @@ const char index_html[] PROGMEM = R"rawliteral(
           };
           xhttp.open("GET", "/temperature", true);
           xhttp.send();
-        }, 10000 ) ;
+        }, 8000 ) ;
         
         setInterval(function ( ) {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
-              console.log(this.responseText);
+              //console.log(this.responseText);
               document.getElementById("mqtt").innerHTML = this.responseText;
             }
           };
           xhttp.open("GET", "/mqtt", true);
           xhttp.send();
-        }, 10000 ) ;
+        }, 9000 ) ;
         
         setInterval(function ( ) {
           var xhttp = new XMLHttpRequest();
@@ -97,6 +103,17 @@ const char index_html[] PROGMEM = R"rawliteral(
           };
           xhttp.open("GET", "/temp_config", true);
           xhttp.send();
-        }, 10000 ) ;
+        }, 11000 ) ;
+        
+        setInterval(function ( ) {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              document.getElementById("qtd_boot").innerHTML = this.responseText;
+            }
+          };
+          xhttp.open("GET", "/qtd_boot", true);
+          xhttp.send();
+        }, 11000 ) ;        
     </script>
 </html>)rawliteral";
