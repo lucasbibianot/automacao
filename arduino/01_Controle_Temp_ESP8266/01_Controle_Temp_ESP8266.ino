@@ -22,6 +22,8 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
+#define debug 0
+
 DynamicJsonDocument config(2048);
 //DynamicJsonDocument param(2048);
 
@@ -42,7 +44,10 @@ void display_vazio();
 void display_temp_config(float fltTempConfig, String strQtdBoot);
 bool updateConfig(DynamicJsonDocument &doc);
 void display_error(String &strMsgErro);
-
+void display_msg(String strMsg1, String strMsg2 = " ");
+bool connectedWeb(String &strMsgErro);
+void reconnect_mqtt(String &strMsgErro);
+void connect_mqtt(String &strMsgErro);
 
 unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
 
@@ -68,8 +73,6 @@ char msg[MSG_BUFFER_SIZE];
 
 #define tempoDebounce 200
 
-#define debug 0
-
 //Instanciando objetos
 DHT dht(pinDHT, typeDHT);
 LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
@@ -87,120 +90,25 @@ float fltHumidade = 0.0;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 
+//WebClient Secure clienteWeb; //Cria um cliente seguro (para ter acesso ao HTTPS)
+WiFiClient clienteWeb; //Cria um cliente seguro (para ter acesso ao HTTPS)
+
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
 unsigned long previousMillis = 0; // will store last time DHT was updated
 
-// Updates DHT readings every 5 seconds
-const long interval = 5000;
+unsigned long currentMillis = millis();
 
 const char* PARAM_INPUT_CONFIGTEMP = "input1";
 
 String LocalIpAdress;
 
 String strPubMsgErro = "";
-
-void setDateTime()
-{
-  // You can use your own timezone, but the exact time is not used at all.
-  // Only the date is needed for validating the certificates.
-  configTime(TZ_America_Sao_Paulo, "pool.ntp.org", "time.nist.gov");
-
-  #if debug == 1
-      Serial.print("Waiting for NTP time sync: ");
-  #endif
-      
-  time_t now = time(nullptr);
-  while (now < 8 * 3600 * 2)
-  {
-    delay(100);
-
-    #if debug == 1
-        Serial.print(".");
-    #endif
-        
-    now = time(nullptr);
-  }
-  
-
-  struct tm timeinfo;
-  gmtime_r(&now, &timeinfo);
-  //Serial.printf("%s %s", tzname[0], asctime(&timeinfo));
-}
-
-void callback(char *topic, byte *payload, unsigned int length)
-{
-    #if debug == 1
-        Serial.print("Message arrived [");
-        Serial.print(topic);
-        Serial.print("] ");
-    #endif
-        
-    for (int i = 0; i < length; i++)
-    {
-        #if debug == 1
-            Serial.print((char)payload[i]);
-        #endif
-    }
-    //Serial.println();
-  
-    /*
-    // Switch on the LED if the first character is present
-    if ((char)payload[0] != NULL)
-    {
-        digitalWrite(LED_BUILTIN, LOW); // Turn the LED on (Note that LOW is the voltage level
-        // but actually the LED is on; this is because
-        // it is active low on the ESP-01)
-        delay(500);
-        digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
-    }
-    else
-    {
-        digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
-    }
-    */
-}
-
-void reconnect(String &strMsgErro)
-{
-    // Loop until we’re reconnected
-    //while (!client->connected())
-    //{
-      #if debug == 1
-          Serial.print("Attempting MQTT connection…");
-      #endif
-          
-      // Attempt to connect
-      // Insert your password
-      if (client->connect(config["mqtt_client_id"], config["mqtt_user"], config["mqtt_password"]))
-      {
-          #if debug == 1
-              Serial.println("connected");
-          #endif
-              
-          client->subscribe(config["topic_subscribe"]);
-          strMsgErro = "";
-      }
-      else
-      {
-          #if debug == 1
-              Serial.print("failed, rc = ");
-              Serial.print(client->state());
-              Serial.println(" try again in 5 seconds");
-          #endif
-              
-          // Wait 5 seconds before retrying
-          //delay(5000);
-          strMsgErro = "Client Mqtt Off";
-          
-      }
-    //} fim loop
-}
+bool bPubConnectWeb = false;
 
 void setup()
 {
     // Serial port for debugging purposes
-
     #if debug == 1
       Serial.begin(115200);
       Serial.println("Inicio");
@@ -208,8 +116,6 @@ void setup()
     
     LittleFS.begin();
 
-    //SPIFFS.begin();
-    
     dht.begin();
     pinMode(pinRele, OUTPUT);
     pinMode(pinBotao, INPUT);
@@ -223,41 +129,7 @@ void setup()
 
     if (strPubMsgErro != "") {
         display_error(strPubMsgErro);
-    }
-    //delay(3000);
-    //lcd.clear(); //limpa o display
-     
-    /*
-    if (loadParam(param)) {
-        //Serial.println("Carreguei os parametros");
-
-        
-        //delay(5000);
-        //Serial.println("debug param");
-
-        int intQtdBoot = 0;
-        intQtdBoot = int(param["qtd_boot"]) + 1;
-
-        String strQtdBoot = String(intQtdBoot);
-        
-        //String strParam = "{'temp': '" + String(param["temp"]).c_str() + "','qtd_boot':" + strQtdBoot + "}";
-        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %s, \"qtd_boot\": %s}", String(param["temp"]).c_str(), strQtdBoot);
-        saveParam(param, msg);    
-        
-        Serial.print("param.temp: ");
-        Serial.println( String(param["temp"]).c_str());
-        Serial.print("param.qtd_boot: ");
-        Serial.println( String(param["qtd_boot"]).c_str());  
-        Serial.print("intQtdBoot: ");
-        Serial.println(intQtdBoot);  
-
-              
-        
-        Serial.print("SETUP msg file json: ");
-        Serial.print(msg);  
-          
-    }
-    */
+    } 
     
     if (loadConfig(config)) {
         #if debug == 1
@@ -269,11 +141,6 @@ void setup()
 
         String strQtdBoot = String(intQtdBoot);
         
-        /*
-        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %s, \"qtd_boot\": %s}", String(param["temp"]).c_str(), strQtdBoot);
-        saveParam(param, msg);         
-        */
-
         config["qtd_boot"] = strQtdBoot;
         updateConfig(config);
     } 
@@ -285,77 +152,98 @@ void setup()
         const String soft_ap = config["soft-ap"];
         // Iniciar o SoftAP
         WiFi.softAP(soft_ap);
+
+        LocalIpAdress = WiFi.softAPIP().toString();
+    
+        display_msg("Modo AP", LocalIpAdress);
+        
         #if debug == 1
           Serial.println("Iniciar SoftAP");
           Serial.print("IP address: ");
           Serial.println(WiFi.softAPIP());
         #endif
         
-    } else {
-      operation_mode = 1;
-      //Serial.printf("%s", ssid);
-      WiFi.begin(ssid, wifi_key);
-
-      #if debug == 1
-          Serial.println("Connecting to WiFi");
-      #endif
-          
-      while (WiFi.status() != WL_CONNECTED)
-      {
-        delay(1000);
-        //Serial.println(".");
-      }
+    } 
+    else {
+        operation_mode = 1;
+        //Serial.printf("%s", ssid);
+        WiFi.begin(ssid, wifi_key);
   
-      // Print ESP8266 Local IP Address
-      #if debug == 1
-          Serial.println(WiFi.localIP());
-      #endif
-          
-      LocalIpAdress = WiFi.localIP().toString();
+        #if debug == 1
+            Serial.println("Connecting to WiFi");
+        #endif
   
-      setDateTime();
-      //pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
-      // you can use the insecure mode, when you want to avoid the certificates
-      //espclient->setInsecure();
+        int iCont = 1;
+        while ( (WiFi.status() != WL_CONNECTED) && (iCont < 16))
+        {
+            delay(1000);
+            #if debug == 1            
+              Serial.print(iCont);
+              Serial.println(" .");            
+            #endif          
+            display_msg("Conectando WIFI", String(iCont) );
+            iCont++;
+        }
   
-      int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
-      //Serial.printf("Number of CA certs read: %d\n", numCerts);
-      if (numCerts == 0)
-      {
-          #if debug == 1
-              Serial.print("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
-          #endif
-          strPubMsgErro = "No Certs";    
-          return; // Can't connect to anything w/o certs!
-      } else {
-         strPubMsgErro = "";
-      }
+        if (WiFi.status() != WL_CONNECTED) {
+            strPubMsgErro = "WIFI no connected";
+        } 
+        else 
+        {  
+            // Print ESP8266 Local IP Address
+            #if debug == 1
+                Serial.println(WiFi.localIP());
+            #endif
+                
+            LocalIpAdress = WiFi.localIP().toString();
+        
+            //verifica se esta conectado na internet e connecta no servidor mqtt
+            if (connectedWeb(strPubMsgErro)) { 
+                connect_mqtt(strPubMsgErro);
+                     
+                bPubConnectWeb = true;
+            }                
+        
+        } // verifica se esta conectado no WIFI
+  
+        rotas_web_modo_1(); 
       
-  
-      BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
-      // Integrate the cert store with this connection
-      bear->setCertStore(&certStore);
-  
-      client = new PubSubClient(*bear);
-      const char* mqq_server = config["mqtt_server"];
-      //Serial.printf("MQTT: %s", mqq_server);
-      client->setServer(mqq_server, (uint16_t) config["mqtt_server_port"]);
-      client->setCallback(callback);
-  
-      rotas_web_modo_1();     
-    }
+    } // verifica em qual modo esta 0: modo AP ou 1: modo WIFI 
   
     rotas_web_default(); 
     
     // Start server    
     server.begin();
+
+    if (strPubMsgErro != "") {
+        display_error(strPubMsgErro);
+    }    
 }
 
 void loop()
 {
     if (operation_mode == 1) {
 
-      unsigned long currentMillis = millis();
+      if ((LocalIpAdress == "") && (WiFi.status() == WL_CONNECTED)){
+          #if debug == 1  
+            Serial.println("Entrou para conectar apos o WIFI retornar: ");
+          #endif            
+          LocalIpAdress = WiFi.localIP().toString();
+          
+          if (connectedWeb(strPubMsgErro)) { 
+              connect_mqtt(strPubMsgErro);          
+              bPubConnectWeb = true;
+          }
+      }
+
+      if (!bPubConnectWeb && LocalIpAdress != "") {
+          if (connectedWeb(strPubMsgErro)) {
+              connect_mqtt(strPubMsgErro);          
+              bPubConnectWeb = true;        
+          }
+      }
+
+      currentMillis = millis();
       
       //trata o bug do millis() zerar depois de 49 dias
       if (currentMillis < previousMillis) {
@@ -368,8 +256,6 @@ void loop()
       estadoBotao = digitalRead(pinBotao);
       if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
           if (!estadoBotao && estadoBotaoAnt) {
-              //contador ++;
-              
               estadoAtual++;
               
               if (estadoAtual > 4) {
@@ -383,45 +269,34 @@ void loop()
 
               switch (estadoAtual) {    
                     case 1: {
-                        #if debug == 1  
-                          Serial.println("case 1 ");
-                        #endif
                         display_temp_hum(fltTemperatura, fltHumidade);
                         break;
                     }
                     case 2: {
-                          #if debug == 1      
-                              Serial.println("case 2 ");
-                          #endif
                           display_ip(LocalIpAdress);
                           break;
                      }  
                      case 3 : {
                           display_temp_config(config["temp"], config["qtd_boot"]);  
-                          //display_temp_config(param["temp"], param["qtd_boot"]);  
                           break;
                      }
                      case 4 : {
                           display_error(strPubMsgErro);  
                           break;
-                     }
-                     
+                     }                     
               }                    
               
               lngdebounceBotao = millis();
-          }
-      }         
+          } // se o estado do botao foi alterado
+      } // controle deboucing botao        
 
-      //if (fltTemperatura < float(param["temp"])) {
       if (fltTemperatura < float(config["temp"])) {
           digitalWrite(pinRele, HIGH);
       } else {
           digitalWrite(pinRele, LOW);
       }             
       
-
-
-      if (currentMillis - previousMillis >= interval)
+      if (currentMillis - previousMillis >= long(config["interval"]))
       {
         
           // Read temperature as Celsius (the default)
@@ -462,28 +337,27 @@ void loop()
 
           //if (currentMillis - previousMillis >= interval)
           //{
-          #if debug == 1    
-              Serial.println(msg);
-          #endif
-          
           if (client != 0) {
               if (!client->connected())
               {
-                  reconnect(strPubMsgErro);
+                  reconnect_mqtt(strPubMsgErro);
               }
               client->loop();          
     
               client->publish(config["topic"], msg);
+
+              #if debug == 1    
+                  Serial.println(msg);
+              #endif
+              
           } // se o cliente do mqtt esta conectado              
           
         //}
 
           // save the last time you updated the DHT values
           previousMillis = currentMillis;            
-      }
+      } //se entreo no intervalo de tempo programado (interval)
     
-      estadoBotaoAnt = estadoBotao;
-      
-      
-    }
+      estadoBotaoAnt = estadoBotao;      
+    } //se o modo de operacao = 1 modo wifi normal
 }

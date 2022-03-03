@@ -132,33 +132,6 @@ void rotas_web_modo_1() {
             config["temp"] = inputMessage;
             config["qtd_boot"] = "0";
             updateConfig(config);
-            
-
-    /*
-    snprintf(msg, MSG_BUFFER_SIZE, "{
-      "wifi-ssid": %s,
-      "wifi-key": %s,
-      "topic": %s",
-      "topic_subscribe": %s",
-      "mqtt_server": "",
-      "mqtt_server_port": "",
-      "mqtt_tag1": "device",
-      "mqtt_tag2": "local",
-      "mqtt_client_id": "",
-      "mqtt_user": "",
-      "mqtt_password": "",
-      "soft-ap": "ESP-123456",
-      "temp": "0",
-      "qtd_boot": "0"      
-    }
-*/
-
-            
-            //Serial.print("msg file json: ");
-            //Serial.print(msg);
-            
-                       
-            //saveParam(param, strParam);
         }
         else {
             inputMessage = "No message sent";
@@ -169,6 +142,7 @@ void rotas_web_modo_1() {
         request->send(200, "text/html", "HTTP GET request sent to your ESP on input field (" 
                                        + inputParam + ") with value: " + inputMessage +
                                        "<br><a href=\"/\">Return to Home Page</a>");
+
     });  
   
  }

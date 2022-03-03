@@ -36,7 +36,8 @@ void write_default_config(File &configFile) {
       "mqtt_password": "",
       "soft-ap": "ESP-123456",
       "temp": "0",
-      "qtd_boot": "0"      
+      "qtd_boot": "0",
+      "interval" : "5000"      
     })rawliteral";
 
     #if debug == 1
