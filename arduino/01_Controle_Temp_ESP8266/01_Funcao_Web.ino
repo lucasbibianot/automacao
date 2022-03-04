@@ -61,39 +61,34 @@ void callback(char *topic, byte *payload, unsigned int length)
 }
 
 void connect_mqtt(String &strMsgErro) {
-          setDateTime();
-
-          
-          
-          //pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
-          // you can use the insecure mode, when you want to avoid the certificates
-          //espclient->setInsecure();
+      setDateTime();
       
-          int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
-          //Serial.printf("Number of CA certs read: %d\n", numCerts);
-          if (numCerts == 0)
-          {
-              #if debug == 1
-                  Serial.print("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
-              #endif
-              strPubMsgErro = "No Certs";    
-              return; // Can't connect to anything w/o certs!
-          } else {
-             strPubMsgErro = "";
-          }
-          
+      //pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
+      // you can use the insecure mode, when you want to avoid the certificates
+      //espclient->setInsecure();
       
-          BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
-          // Integrate the cert store with this connection
-          bear->setCertStore(&certStore);
+      int numCerts = certStore.initCertStore(LittleFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
+      //Serial.printf("Number of CA certs read: %d\n", numCerts);
+      if (numCerts == 0)
+      {
+          #if debug == 1
+              Serial.print("No certs found. Did you run certs-from-mozilla.py and upload the LittleFS directory before running?\n");
+          #endif
+          strPubMsgErro = "No Certs";    
+          return; // Can't connect to anything w/o certs!
+      } else {
+         strPubMsgErro = "";
+      }          
       
-          client = new PubSubClient(*bear);
-          const char* mqq_server = config["mqtt_server"];
-          //Serial.printf("MQTT: %s", mqq_server);
-          client->setServer(mqq_server, (uint16_t) config["mqtt_server_port"]);
-          client->setCallback(callback);
-
-  
+      BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
+      // Integrate the cert store with this connection
+      bear->setCertStore(&certStore);
+      
+      client = new PubSubClient(*bear);
+      const char* mqq_server = config["mqtt_server"];
+      //Serial.printf("MQTT: %s", mqq_server);
+      client->setServer(mqq_server, (uint16_t) config["mqtt_server_port"]);
+      client->setCallback(callback);  
 }
 
 void reconnect_mqtt(String &strMsgErro)

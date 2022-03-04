@@ -22,7 +22,7 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
-#define debug 0
+#define debug 1
 
 DynamicJsonDocument config(2048);
 //DynamicJsonDocument param(2048);
@@ -80,6 +80,8 @@ LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
 unsigned long lngdebounceBotao;
 bool estadoBotao;
 bool estadoBotaoAnt = LOW;
+
+bool estadoRele = false;
 
 int estadoAtual = 1;
 
@@ -292,8 +294,10 @@ void loop()
 
       if (fltTemperatura < float(config["temp"])) {
           digitalWrite(pinRele, HIGH);
+          estadoRele = true;
       } else {
           digitalWrite(pinRele, LOW);
+          estadoRele = false;
       }             
       
       if (currentMillis - previousMillis >= long(config["interval"]))
@@ -333,11 +337,21 @@ void loop()
           }
           
           //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f}", fltTemperatura, fltHumidade, float(param["temp"]));
-          snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s}", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str());
+          snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(estadoRele));
 
           //if (currentMillis - previousMillis >= interval)
           //{
+
+          #if debug == 1    
+              Serial.print("client: ");
+              Serial.println(client != 0);
+          #endif          
           if (client != 0) {
+              #if debug == 1    
+                  Serial.print("client->connected(): ");
+                  Serial.println(client->connected());
+              #endif   
+            
               if (!client->connected())
               {
                   reconnect_mqtt(strPubMsgErro);
