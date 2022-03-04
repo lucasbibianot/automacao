@@ -41,25 +41,14 @@ void handleConfig(AsyncWebServerRequest * request) {
     for (int i = 0; i < params; i++)
     {
         AsyncWebParameter *p = request->getParam(i);
-        /*
-        if (p->isFile())
-        {
-            //Serial.printf("_FILE[%s]: %s, size: %u", p->name().c_str(), p->value().c_str(), p->size());
-        }
-        else 
-        */
         if (p->isPost())
-        {
-            //Serial.printf("_POST[%s]: %s", p->name().c_str(), p->value().c_str());
-            saveConfig(config, p->value().c_str());
+        { 
+          const bool retorno = saveConfig(config, p->value().c_str());
+          if (retorno) {
+            ESP.restart();
+          }
     
         }
-        /*
-        else
-        {
-            //Serial.printf("_GET[%s]: %s", p->name().c_str(), p->value().c_str());
-        }
-        */
     }
     if (request->hasParam("textarea", true))
     {
@@ -117,18 +106,6 @@ void rotas_web_modo_1() {
         if (request->hasParam(PARAM_INPUT_CONFIGTEMP)) {
             inputMessage = request->getParam(PARAM_INPUT_CONFIGTEMP)->value();
             inputParam = PARAM_INPUT_CONFIGTEMP;
-    
-            //String strParam = "{'temp': '" + inputMessage + "','qtd_boot':" + String(param["qtd_boot"]).c_str() + "}";
-            
-            //String strParam = "{'temp': '" + inputMessage + "','qtd_boot':" + param["qtd_boot"] + "}";
-            
-
-            //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %s, \"qtd_boot\": %s}", inputMessage, String(param["qtd_boot"]).c_str());
-            
-            /*ultimo usado
-            snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %s, \"qtd_boot\": \"0\"}", inputMessage);
-            saveParam(param, msg);   
-            */
             config["temp"] = inputMessage;
             config["qtd_boot"] = "0";
             updateConfig(config);
@@ -137,8 +114,7 @@ void rotas_web_modo_1() {
             inputMessage = "No message sent";
             inputParam = "none";
         }
-        //Serial.println(inputMessage);
-        
+       
         request->send(200, "text/html", "HTTP GET request sent to your ESP on input field (" 
                                        + inputParam + ") with value: " + inputMessage +
                                        "<br><a href=\"/\">Return to Home Page</a>");
