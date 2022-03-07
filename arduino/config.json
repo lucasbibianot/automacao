@@ -1,0 +1,13 @@
+{
+  "wifi-ssid": "TIPO-NET-2",
+  "wifi-key": "thedome2014",
+  "topic": "device/sensor/lucas",
+  "topic_subscribe": "device/sensor/lucas/cmd",
+  "mqtt_server": "5a0e8b8db22a4b0d9b1b290dea3e5c61.s2.eu.hivemq.cloud",
+  "mqtt_server_port": 8883,
+  "mqtt_tag1": "device",
+  "mqtt_tag2": "local",
+  "mqtt_client_id": "DVES_081C09",
+  "mqtt_user": "admin",
+  "mqtt_password": "Tasmota1"
+}
