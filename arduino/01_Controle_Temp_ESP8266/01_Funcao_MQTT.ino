@@ -34,7 +34,7 @@ void execute_operacao(String chave, int valor) {
         ligar_rele();      
         break;
       }
-      case 2: {
+      case 0: {
         desligar_rele();
         break;
       }

@@ -46,32 +46,6 @@ void write_default_config(File &configFile) {
   configFile.close();
 }
 
-bool loadParam(DynamicJsonDocument &docParam) {
-  File paramFile = LittleFS.open("/param.json", "r");
-  if (!paramFile) {
-      paramFile = LittleFS.open("/param.json", "w+");
-      paramFile.close();
-      File paramFile = LittleFS.open("/param.json", "r");
-  }
-  size_t size = paramFile.size();
-  if (size > 1024) {
-      #if debug == 1
-          Serial.println("Param file size is too large");
-      #endif
-      return false;
-  }
-  auto error = deserializeJson(docParam, paramFile);
-  serializeJsonPretty(docParam, Serial);
-  if (error || !docParam.containsKey("temp")) {
-      paramFile.close();
-      write_default_param(paramFile);
-      paramFile = LittleFS.open("/param.json", "r");
-      auto error = deserializeJson(docParam, paramFile);
-  }
-  paramFile.close();
-  return true;
-}
-
 bool loadConfig(DynamicJsonDocument &doc) {
   File configFile = LittleFS.open("/config.json", "r");
   if (!configFile) {
@@ -100,22 +74,6 @@ bool loadConfig(DynamicJsonDocument &doc) {
   return true;
 }
 
-bool saveParam(DynamicJsonDocument &docParam, String novo) {
-  auto error = deserializeJson(docParam, novo);
-  if (!error) {
-      File paramFile = LittleFS.open("/param.json", "w");
-      if (!paramFile) {
-        #if debug == 1
-            Serial.println("Failed to open param file for writing");
-        #endif
-        return false;
-      }
-      size_t val = serializeJson(docParam, paramFile);
-      paramFile.close();
-      return true;
-  }
-  return false;
-}
 
 bool saveConfig(DynamicJsonDocument &doc, String novo) {
   auto error = deserializeJson(doc, novo);

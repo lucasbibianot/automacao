@@ -17,16 +17,15 @@
 #include <LiquidCrystal_I2C.h>
 
 #define debug 1
+#define MSG_BUFFER_SIZE (500)
 
 DynamicJsonDocument config(2048);
 
 //Funcoes
-bool loadParam(DynamicJsonDocument &docParam);
 void handleConfig(AsyncWebServerRequest * request);
 void write_default_param(File &paramFile);
 void write_default_config(File &configFile);
 bool loadConfig(DynamicJsonDocument &doc);
-bool saveParam(DynamicJsonDocument &docParam, String novo);
 bool saveConfig(DynamicJsonDocument &doc, String novo);
 void notFound(AsyncWebServerRequest *request);
 void rotas_web_modo_1();
@@ -45,7 +44,6 @@ void connect_mqtt(String &strMsgErro);
 unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
 BearSSL::CertStore certStore;
 PubSubClient *client;
-#define MSG_BUFFER_SIZE (500)
 char msg[MSG_BUFFER_SIZE];
 
 #define enderecoLcd  0x27
