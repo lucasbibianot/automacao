@@ -52,7 +52,7 @@ char msg[MSG_BUFFER_SIZE];
 #define colunasLcd   16
 #define linhasLcd    2
 
-#define pinDHT  12
+#define pinDHT  0
 #define typeDHT DHT22     // DHT22
 #define pinRele 14
 #define pinBotao 15
@@ -64,7 +64,6 @@ LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
 unsigned long lngdebounceBotao;
 bool estadoBotao;
 bool estadoBotaoAnt = LOW;
-bool estadoRele = false;
 int estadoAtual = 1;
 float fltTemperatura = 0.0;
 float fltHumidade = 0.0;
@@ -77,6 +76,15 @@ const char* PARAM_INPUT_CONFIGTEMP = "input1";
 String LocalIpAdress;
 String strPubMsgErro = "";
 bool bPubConnectWeb = false;
+String modo = "a";
+
+void ligar_rele(){
+  digitalWrite(pinRele, HIGH);
+}
+
+void desligar_rele() {
+  digitalWrite(pinRele, LOW);
+}
 
 void setup()
 {
@@ -192,14 +200,12 @@ void loop()
     if (currentMillis < previousMillis) {
         previousMillis = 0;
     }
-    if (currentMillis - previousMillis >= long(config["interval"]))
+    if (currentMillis - previousMillis >= long(config["interval"]) && modo == "a")
     {
       if (fltTemperatura < float(config["temp"])) {
-        digitalWrite(pinRele, HIGH);
-        estadoRele = true;
+        ligar_rele();
       } else {
-        digitalWrite(pinRele, LOW);
-        estadoRele = false;
+        desligar_rele();
       }
       float newT = dht.readTemperature();
       if (!isnan(newT))
@@ -224,50 +230,50 @@ void loop()
       }
       else {
           fltHumidade = 0;
-      }
-      if (int(config["usar_display"]) == 1) {
-        if (currentMillis < lngdebounceBotao) {
-            lngdebounceBotao = 0;
-        }
-        estadoBotao = digitalRead(pinBotao);
-        if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
-          if (!estadoBotao && estadoBotaoAnt) {
-              estadoAtual++;
-              if (estadoAtual > 4) {
-                 estadoAtual = 1;
-              }
-              #if debug == 1
-                Serial.print("estadoAtual: ");
-                Serial.println(estadoAtual);
-              #endif
-              switch (estadoAtual) {
-                case 1: {
-                  display_temp_hum(fltTemperatura, fltHumidade);
-                  break;
-                }
-                case 2: {
-                    display_ip(LocalIpAdress);
-                    break;
-                 }
-                 case 3 : {
-                    display_temp_config(config["temp"], config["qtd_boot"]);
-                    break;
-                 }
-                 case 4 : {
-                    display_error(strPubMsgErro);
-                    break;
-                 }
-              }
-              lngdebounceBotao = millis();
-          }
-        }
-        estadoBotaoAnt = estadoBotao;
-      }
       previousMillis = currentMillis;
+    }
+      }
+    if (int(config["usar_display"]) == 1) {
+      if (currentMillis < lngdebounceBotao) {
+          lngdebounceBotao = 0;
+      }
+      estadoBotao = digitalRead(pinBotao);
+      if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+        if (!estadoBotao && estadoBotaoAnt) {
+            estadoAtual++;
+            if (estadoAtual > 4) {
+               estadoAtual = 1;
+            }
+            #if debug == 1
+              Serial.print("estadoAtual: ");
+              Serial.println(estadoAtual);
+            #endif
+            switch (estadoAtual) {
+              case 1: {
+                display_temp_hum(fltTemperatura, fltHumidade);
+                break;
+              }
+              case 2: {
+                  display_ip(LocalIpAdress);
+                  break;
+               }
+               case 3 : {
+                  display_temp_config(config["temp"], config["qtd_boot"]);
+                  break;
+               }
+               case 4 : {
+                  display_error(strPubMsgErro);
+                  break;
+               }
+            }
+            lngdebounceBotao = millis();
+        }
+      }
+      estadoBotaoAnt = estadoBotao;
     }
     if (connectedWeb(strPubMsgErro)) {
       if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
-        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(estadoRele));
+        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
         #if debug == 1
             Serial.print("client: ");
             Serial.println(client != 0);

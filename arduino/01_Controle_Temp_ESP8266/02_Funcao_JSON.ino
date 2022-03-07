@@ -90,7 +90,7 @@ bool loadConfig(DynamicJsonDocument &doc) {
   strPubMsgErro = "";
   auto error = deserializeJson(doc, configFile);
   serializeJsonPretty(doc, Serial);
-  if (error || !doc.containsKey("soft-ap")) {
+  if (error || !doc.containsKey("soft-ap") || !doc.containsKey("usar_display")) {
       configFile.close();
       write_default_config(configFile);
       configFile = LittleFS.open("/config.json", "r");

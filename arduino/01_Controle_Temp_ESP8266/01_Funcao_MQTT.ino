@@ -22,31 +22,43 @@ void setDateTime()
   #endif
 }
 
+void execute_operacao(String chave, int valor) {
+  if (String("estadoRele") == chave){
+    #if debug == 1
+      Serial.println("Alterando relé para: ");
+      Serial.print(valor);
+      Serial.println("");
+    #endif
+    switch (valor) {
+      case 1: {
+        ligar_rele();      
+        break;
+      }
+      case 2: {
+        desligar_rele();
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}
+
 void callback(char *topic, byte *payload, unsigned int length)
-{
+{ 
   #if debug == 1
       Serial.print("Message arrived [");
       Serial.print(topic);
       Serial.print("] ");
-  #endif
-  for (int i = 0; i < length; i++)
-  {
-      #if debug == 1
-          Serial.print((char)payload[i]);
-      #endif
-  }
-  // Switch on the LED if the first character is present
-  if ((char)payload[0] != NULL)
-  {
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(500);
-      digitalWrite(LED_BUILTIN, HIGH);
-  }
-  else
-  {
-      digitalWrite(LED_BUILTIN, HIGH);
-  }
+  #endif    
+  StaticJsonDocument<256> doc;
+  deserializeJson(doc, (const byte*)payload, length);
+  modo = String(doc["modo"]);
+  String device = doc["device"];
+  serializeJsonPretty(doc, Serial);
+  execute_operacao(device, int(doc["value"]));
 }
+
 
 void connect_mqtt(String &strMsgErro) {
   setDateTime();
