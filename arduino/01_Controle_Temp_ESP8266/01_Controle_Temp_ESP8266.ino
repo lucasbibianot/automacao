@@ -118,8 +118,8 @@ void setup()
     updateConfig(config);
   }
   #if debug == 1
-    //Serial.print("Usando o Display: ");
-    //Serial.println(int(config["usar_display"]));
+    Serial.print("Usando o Display: ");
+    Serial.println(int(config["usar_display"]));
   #endif
   
   dht.begin();
@@ -128,8 +128,8 @@ void setup()
   
   pinMode(pinRele, OUTPUT);
   pinMode(pinBotao, INPUT);
-  
-  //if (int(config["usar_display"] == 1 )) {
+
+  if (byte(config["usar_display"] == "1" )) {    
     lcd.init();
     lcd.backlight();
     lcd.clear();
@@ -138,7 +138,7 @@ void setup()
     if (strPubMsgErro != "") {
         display_error(strPubMsgErro);
     }
-  //}
+  }
   const String ssid = config["wifi-ssid"];
   const String wifi_key = config["wifi-key"];
   
@@ -293,7 +293,7 @@ void loop()
     
     previousMillis = currentMillis;
    }
-    //if (int(config["usar_display"]) == 1) {
+    if (byte(config["usar_display"] == "1")) {
       if (currentMillis < lngdebounceBotao) {
           lngdebounceBotao = 0;
       }
@@ -330,7 +330,7 @@ void loop()
         }
       }
       estadoBotaoAnt = estadoBotao;
-    //}
+    }
     
     if (bPubConnectWeb) {
       if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {

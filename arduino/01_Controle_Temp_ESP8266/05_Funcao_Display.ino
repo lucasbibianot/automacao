@@ -1,5 +1,5 @@
  void display_temp_hum(float &fltTemp, float &fltHum) {
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Temp: ");
@@ -9,21 +9,21 @@
     lcd.print(fltTemp);
     lcd.setCursor(10,1);
     lcd.print(fltHum);
-  //}
+  }
 }
 
  void display_ip(String &strIP) {
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("IP: ");
     lcd.setCursor(4,0);
     lcd.print(strIP);
-  //}
+  }
 }
 
 void display_temp_config(float fltTempConfig, String strQtdBoot){
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Temp Conf: ");
@@ -33,31 +33,31 @@ void display_temp_config(float fltTempConfig, String strQtdBoot){
     lcd.print("Qtd Boot: ");
     lcd.setCursor(10,1);
     lcd.print(strQtdBoot);
-  //}
+  }
 }
 
 void display_error(String &strMsgErro)  {
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Error: ");
     lcd.setCursor(0,1);
     lcd.print(strMsgErro);
-  //}
+  }
 }
 
  void display_vazio() {
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
-  //}
+  }
 }
 
 void display_msg(String strMsg1, String strMsg2) {
-  //if (int(config["usar_display"]) == 1) {
+  if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(strMsg1);
     lcd.setCursor(0,1);
     lcd.print(strMsg2);
-  //}
+  }
 }
