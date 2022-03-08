@@ -110,7 +110,16 @@ void reconnect_mqtt(String &strMsgErro)
 }
 
 bool connectedWeb(String &strMsgErro) {
-  if (clienteWeb.connect("google.com", 80) == true) {
+
+  #if debug == 1
+      Serial.println("inicio funcao connectedWeb");
+  #endif
+  
+  if (clienteWeb.connect("142.250.218.110", 80) == true) {
+    #if debug == 1       
+        Serial.println("fim funcao connectedWeb");
+    #endif    
+    
     strMsgErro = "";
     return true;
   }

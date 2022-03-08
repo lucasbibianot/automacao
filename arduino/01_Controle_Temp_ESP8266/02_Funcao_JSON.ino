@@ -34,8 +34,7 @@ void write_default_config(File &configFile) {
     "temp": "0",
     "qtd_boot": "0",
     "interval" : "5000",
-    "interval_mqtt": "30000",
-    "usar_display": "0"
+    "interval_mqtt": "30000"
   })rawliteral";
   #if debug == 1
     Serial.println("Failed to open config file");
@@ -64,7 +63,8 @@ bool loadConfig(DynamicJsonDocument &doc) {
   strPubMsgErro = "";
   auto error = deserializeJson(doc, configFile);
   serializeJsonPretty(doc, Serial);
-  if (error || !doc.containsKey("soft-ap") || !doc.containsKey("usar_display")) {
+  //if (error || !doc.containsKey("soft-ap") || !doc.containsKey("usar_display")) {
+  if (error || !doc.containsKey("soft-ap")) {
       configFile.close();
       write_default_config(configFile);
       configFile = LittleFS.open("/config.json", "r");

@@ -1,5 +1,3 @@
-#include <ArduinoECCX08.h>
-
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <Hash.h>
@@ -13,6 +11,8 @@
 #include <ArduinoJson.h>
 #include <CertStoreBearSSL.h>
 #include <FS.h>
+
+// Import required libraries Components
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -55,21 +55,34 @@ char msg[MSG_BUFFER_SIZE];
 #define pinRele 14
 #define pinBotao 15
 
-#define tempoDebounce 200
+#define pinDHT  0         // Digital pin connected to the DHT sensor
+#define typeDHT DHT22     // DHT 22 (AM2302)
+#define pinRele 14        // Digital pin rele
+#define pinBotao 15       // Digital pin button
+
+#define tempoDebounce 400
 
 DHT dht(pinDHT, typeDHT);
 LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
-unsigned long lngdebounceBotao;
+
+
+
 bool estadoBotao;
 bool estadoBotaoAnt = LOW;
 int estadoAtual = 1;
+
 float fltTemperatura = 0.0;
 float fltHumidade = 0.0;
+
 AsyncWebServer server(80);
 WiFiClient clienteWeb;
+
 unsigned long previousMillis = 0;
 unsigned long previousMillisMqtt = 0;
 unsigned long currentMillis = millis();
+unsigned long lngdebounceBotao;
+unsigned long previousMillisConnectedWeb = 0;
+
 const char* PARAM_INPUT_CONFIGTEMP = "input1";
 String LocalIpAdress;
 String strPubMsgErro = "";
@@ -90,11 +103,14 @@ void setup()
     Serial.begin(115200);
     Serial.println("Inicio");
   #endif
+  
   LittleFS.begin();
+  
   if (loadConfig(config)) {
     #if debug == 1
         Serial.println("Carreguei as configurações");
     #endif
+    
     int intQtdBoot = 0;
     intQtdBoot = int(config["qtd_boot"]) + 1;
     String strQtdBoot = String(intQtdBoot);
@@ -102,15 +118,18 @@ void setup()
     updateConfig(config);
   }
   #if debug == 1
-    Serial.print("Usando o Display: ");
-    Serial.println(int(config["usar_display"]));
+    //Serial.print("Usando o Display: ");
+    //Serial.println(int(config["usar_display"]));
   #endif
+  
   dht.begin();
   server.begin();
   rotas_web_default();
+  
   pinMode(pinRele, OUTPUT);
   pinMode(pinBotao, INPUT);
-  if (int(config["usar_display"] == 1 )) {
+  
+  //if (int(config["usar_display"] == 1 )) {
     lcd.init();
     lcd.backlight();
     lcd.clear();
@@ -119,14 +138,16 @@ void setup()
     if (strPubMsgErro != "") {
         display_error(strPubMsgErro);
     }
-  }
+  //}
   const String ssid = config["wifi-ssid"];
   const String wifi_key = config["wifi-key"];
+  
   if (ssid == "") {
     const String soft_ap = config["soft-ap"];
     WiFi.softAP(soft_ap);
     LocalIpAdress = WiFi.softAPIP().toString();
     display_msg("Modo AP", LocalIpAdress);
+    
     #if debug == 1
       Serial.println("Iniciar SoftAP");
       Serial.print("IP address: ");
@@ -136,9 +157,11 @@ void setup()
   else {
     operation_mode = 1;
     WiFi.begin(ssid, wifi_key);
+    
     #if debug == 1
         Serial.println("Connecting to WiFi");
     #endif
+    
     int iCont = 1;
     while ( (WiFi.status() != WL_CONNECTED) && (iCont < 16))
     {
@@ -150,6 +173,7 @@ void setup()
         display_msg("Conectando WIFI", String(iCont) );
         iCont++;
     }
+    
     if (WiFi.status() != WL_CONNECTED) {
         strPubMsgErro = "WIFI no connected";
     }
@@ -172,9 +196,11 @@ void setup()
     }
     rotas_web_modo_1();
   }
+  
   if (strPubMsgErro != "") {
     display_error(strPubMsgErro);
   }
+  
   #if debug == 1
     Serial.println("Fim Setup");
   #endif
@@ -183,21 +209,50 @@ void setup()
 void loop()
 {
   if (operation_mode == 1) {
+    
+    currentMillis = millis();
+
+    if (currentMillis < previousMillisConnectedWeb) {
+        previousMillisConnectedWeb = 0;
+    }
+    
+    if (currentMillis - previousMillisConnectedWeb >= long(config["interval_mqtt"])) {
+      if (LocalIpAdress != "") {
+        if (connectedWeb(strPubMsgErro)) {
+          bPubConnectWeb = true;
+        } else {
+          bPubConnectWeb = false;
+        }
+      } else {
+        bPubConnectWeb = false;
+      }
+
+      previousMillisConnectedWeb = currentMillis;
+    }
+    
     if ((LocalIpAdress == "") && (WiFi.status() == WL_CONNECTED)){
         #if debug == 1
           Serial.println("Entrou para conectar apos o WIFI retornar: ");
         #endif
         LocalIpAdress = WiFi.localIP().toString();
     }
-    if (connectedWeb(strPubMsgErro) && !client->connected())
+    
+    if (bPubConnectWeb && !client->connected())
+    //if ((bPubConnectWeb) && !client->connected())
     {
-        reconnect_mqtt(strPubMsgErro);
+        reconnect_mqtt(strPubMsgErro);        
     }
-    client->loop();
+
+    if (bPubConnectWeb) {
+      client->loop();
+    }
+    
     currentMillis = millis();
+    
     if (currentMillis < previousMillis) {
         previousMillis = 0;
     }
+    
     if (currentMillis - previousMillis >= long(config["interval"]) && modo == "a")
     {
       if (fltTemperatura < float(config["temp"])) {
@@ -206,6 +261,7 @@ void loop()
         desligar_rele();
       }
       float newT = dht.readTemperature();
+      
       if (!isnan(newT))
       {
           fltTemperatura = newT;
@@ -228,10 +284,16 @@ void loop()
       }
       else {
           fltHumidade = 0;
-      previousMillis = currentMillis;
+          
     }
-      }
-    if (int(config["usar_display"]) == 1) {
+
+    if (estadoAtual == 1) {
+        display_temp_hum(fltTemperatura, fltHumidade);
+    }
+    
+    previousMillis = currentMillis;
+   }
+    //if (int(config["usar_display"]) == 1) {
       if (currentMillis < lngdebounceBotao) {
           lngdebounceBotao = 0;
       }
@@ -268,8 +330,9 @@ void loop()
         }
       }
       estadoBotaoAnt = estadoBotao;
-    }
-    if (connectedWeb(strPubMsgErro)) {
+    //}
+    
+    if (bPubConnectWeb) {
       if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
         snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
         #if debug == 1
