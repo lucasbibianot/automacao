@@ -1,5 +1,4 @@
-void setDateTime()
-{
+void setDateTime() {
   configTime(TZ_America_Sao_Paulo, "pool.ntp.org", "time.nist.gov");
   #if debug == 1
       Serial.print("Waiting for NTP time sync: ");
@@ -23,7 +22,7 @@ void setDateTime()
 }
 
 void execute_operacao(String chave, int valor) {
-  if (String("estadoRele") == chave){
+  if (String("estadoRele") == chave) {
     #if debug == 1
       Serial.println("Alterando relé para: ");
       Serial.print(valor);
@@ -31,7 +30,7 @@ void execute_operacao(String chave, int valor) {
     #endif
     switch (valor) {
       case 1: {
-        ligar_rele();      
+        ligar_rele();
         break;
       }
       case 0: {
@@ -41,16 +40,24 @@ void execute_operacao(String chave, int valor) {
       default:
         break;
     }
+  } else if (String("temp") == chave) {
+      config["temp"] = valor;
+      updateConfig(config);
+  } else if (String("interval_mqtt") == chave) {
+      config["interval_mqtt"] = valor;
+      updateConfig(config);
+  } else if (String("reboot") == chave && valor == 1) {
+      ESP.restart();
   }
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
-{ 
+{
   #if debug == 1
       Serial.print("Message arrived [");
       Serial.print(topic);
       Serial.print("] ");
-  #endif    
+  #endif
   StaticJsonDocument<256> doc;
   deserializeJson(doc, (const byte*)payload, length);
   strPubModo = String(doc["modo"]);
@@ -114,12 +121,12 @@ bool connectedWeb(String &strMsgErro) {
   #if debug == 1
       Serial.println("inicio funcao connectedWeb");
   #endif
-  
+
   if (clienteWeb.connect("google.com", 80) == true) {
-    #if debug == 1       
+    #if debug == 1
         Serial.println("fim funcao connectedWeb");
-    #endif    
-    
+    #endif
+
     strMsgErro = "";
     return true;
   }

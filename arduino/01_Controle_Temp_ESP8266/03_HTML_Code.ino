@@ -341,7 +341,7 @@ const char config_html[] PROGMEM = R"rawliteral(
         }
     </style>
 </head>
-<body onload="(read_config())">    
+<body onload="(read_config())">
     <div class="container">
         <header>
             <div class="items" style="justify-content: center;">
@@ -350,80 +350,80 @@ const char config_html[] PROGMEM = R"rawliteral(
             </div>
         </header>
         <main>
-            <section>            
+            <section>
                 <div class="form">
                     <form action="/config" method="POST">
                         <div class="items">
                             <div class="titulo">
                                 <label>Wifi-ssid: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_wifi_ssid" name="input_wifi_ssid" placeholder="Digite o ssid">
                             </div>
-                        </div>   
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Wifi-key: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_wifi_key" name="input_wifi_key" placeholder="Digite a chave">
                             </div>
-                        </div>   
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Topic: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_topic" name="input_topic" placeholder="Digite o topic">
                             </div>
-                        </div>   
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Topic subscribe: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_topic_subscribe" name="input_topic_subscribe" placeholder="Digite o topic">
                             </div>
-                        </div>   
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt server: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_mqtt_server" name="input_mqtt_server" placeholder="Digite a string de conexao">
                             </div>
                         </div>                    <div class="items">
                             <div class="titulo">
                                 <label>Mqtt server port: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_number" type="number" id="input_mqtt_server_port" name="input_mqtt_server_port" placeholder="Porta">
                             </div>
-                        </div>                                                                                                 
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt Tag1: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_mqtt_tag1" name="input_mqtt_tag1" placeholder="Digite a nova Tag">
                             </div>
-                        </div>            
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt Tag2: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_mqtt_tag2" name="input_mqtt_tag2" placeholder="Digite a nova Tag">
                             </div>
-                        </div>                       
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt Client Id: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_mqtt_client_id" name="input_mqtt_client_id" placeholder="Digite Mqtt ID">
                             </div>
-                        </div>                    
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt user: &nbsp;</label>
@@ -435,43 +435,43 @@ const char config_html[] PROGMEM = R"rawliteral(
                         <div class="items">
                             <div class="titulo">
                                 <label>Mqtt password: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_mqtt_password" name="input_mqtt_password" placeholder="Digite o password">
                             </div>
-                        </div>   
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Soft-ap: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_string" type="string" id="input_soft_ap" name="input_soft_ap" placeholder="Digite o nome da rede">
                             </div>
-                        </div>                                                                                                 
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Temperatura: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_number" type="number" id="input_temp" name="input_temp" placeholder="Temp">
                             </div>
-                        </div>            
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Qtd boot: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_number" type="number" id="input_qtd_boot" name="input_qtd_boot" placeholder="" readonly>
                             </div>
-                        </div>                       
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Interval: &nbsp;</label>
-                            </div>                        
+                            </div>
                             <div class="content">
                                 <input class="input_number" type="number" id="input_interval" name="input_interval" placeholder="Intervalo">
                             </div>
-                        </div>                    
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Interval mqtt: &nbsp;</label>
@@ -479,7 +479,7 @@ const char config_html[] PROGMEM = R"rawliteral(
                             <div class="content">
                                 <input class="input_number" type="number" id="input_interval_mqtt" name="input_interval_mqtt" placeholder="Intervalo">
                             </div>
-                        </div>             
+                        </div>
                         <div class="items">
                             <div class="titulo">
                                 <label>Usar display: &nbsp;</label>
@@ -487,12 +487,12 @@ const char config_html[] PROGMEM = R"rawliteral(
                             <div class="content">
                                 <input class="input_number" type="number" id="input_usar_display" name="input_usar_display" placeholder="1 ou 0">
                             </div>
-                        </div>                               
+                        </div>
                         <div class="items">
                             <div class="content_button">
                                 <button type="submit" class="submit">Enviar</button>
                             </div>
-                        </div>                    
+                        </div>
                     </form>
                 </div>
             </section>
@@ -509,7 +509,7 @@ const char config_html[] PROGMEM = R"rawliteral(
 
                 var myArr = JSON.parse(this.responseText);
                 document.getElementById("input_wifi_ssid").value = myArr.wifi_ssid;
-                document.getElementById("input_wifi_key").value = myArr.wifi_key;        
+                document.getElementById("input_wifi_key").value = myArr.wifi_key;
                 document.getElementById("input_topic").value = myArr.topic;
                 document.getElementById("input_topic_subscribe").value = myArr.topic_subscribe;
                 document.getElementById("input_mqtt_server").value = myArr.mqtt_server;

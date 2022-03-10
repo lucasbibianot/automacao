@@ -52,20 +52,19 @@ char msg[MSG_BUFFER_SIZE];
 #define pinDHT  0
 #define typeDHT DHT22     // DHT22
 #define pinRele 14
-#define pinBotao 15
+#define pinBotaoMenu 15
+#define pinBotaoReset 13
 
-#define pinDHT  0         // Digital pin connected to the DHT sensor
-#define typeDHT DHT22     // DHT 22 (AM2302)
-#define pinRele 14        // Digital pin rele
-#define pinBotao 15       // Digital pin button
-
-#define tempoDebounce 400
+#define tempoDebounce 300
 
 DHT dht(pinDHT, typeDHT);
 LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
 
-bool estadoBotao;
-bool estadoBotaoAnt = LOW;
+bool estadoBotaoMenu;
+bool estadoBotaoReset;
+bool estadoBotaoMenuAnt = LOW;
+bool estadoBotaoResetAnt = LOW;
+
 int estadoAtual = 1;
 
 float fltTemperatura = 0.0;
@@ -100,14 +99,14 @@ void setup()
     Serial.begin(115200);
     Serial.println("Inicio");
   #endif
-  
+
   LittleFS.begin();
-  
+
   if (loadConfig(config)) {
     #if debug == 1
         Serial.println("Carreguei as configurações");
     #endif
-    
+
     int intQtdBoot = 0;
     intQtdBoot = int(config["qtd_boot"]) + 1;
     String strQtdBoot = String(intQtdBoot);
@@ -118,15 +117,16 @@ void setup()
     Serial.print("Usando o Display: ");
     Serial.println(int(config["usar_display"]));
   #endif
-  
+
   dht.begin();
   server.begin();
   rotas_web_default();
-  
-  pinMode(pinRele, OUTPUT);
-  pinMode(pinBotao, INPUT);
 
-  if (byte(config["usar_display"] == "1" )) {    
+  pinMode(pinRele, OUTPUT);
+  pinMode(pinBotaoMenu, INPUT);
+  pinMode(pinBotaoReset, INPUT);  
+
+  if (byte(config["usar_display"] == "1" )) {
     lcd.init();
     lcd.backlight();
     lcd.clear();
@@ -138,13 +138,13 @@ void setup()
   }
   const String ssid = config["wifi_ssid"];
   const String wifi_key = config["wifi_key"];
-  
+
   if (ssid == "") {
     const String soft_ap = config["soft_ap"];
     WiFi.softAP(soft_ap);
     LocalIpAdress = WiFi.softAPIP().toString();
     display_msg("Modo AP", LocalIpAdress);
-    
+
     #if debug == 1
       Serial.println("Iniciar SoftAP");
       Serial.print("IP address: ");
@@ -154,11 +154,11 @@ void setup()
   else {
     operation_mode = 1;
     WiFi.begin(ssid, wifi_key);
-    
+
     #if debug == 1
         Serial.println("Connecting to WiFi");
     #endif
-    
+
     int iCont = 1;
     while ( (WiFi.status() != WL_CONNECTED) && (iCont < 16))
     {
@@ -170,7 +170,7 @@ void setup()
         display_msg("Conectando WIFI", String(iCont) );
         iCont++;
     }
-    
+
     if (WiFi.status() != WL_CONNECTED) {
         strPubMsgErro = "WIFI no connected";
     }
@@ -193,11 +193,11 @@ void setup()
     }
     rotas_web_modo_1();
   }
-  
+
   if (strPubMsgErro != "") {
     display_error(strPubMsgErro);
   }
-  
+
   #if debug == 1
     Serial.println("Fim Setup");
   #endif
@@ -205,154 +205,172 @@ void setup()
 
 void loop()
 {
-  if (operation_mode == 1) {
+    if (operation_mode == 1) {
     
-    currentMillis = millis();
-
-    if (currentMillis < previousMillisConnectedWeb) {
-        previousMillisConnectedWeb = 0;
-    }
+        currentMillis = millis();
     
-    if (currentMillis - previousMillisConnectedWeb >= long(config["interval_mqtt"])) {
-      if (LocalIpAdress != "") {
-        if (connectedWeb(strPubMsgErro)) {
-          bPubConnectWeb = true;
-        } else {
-          bPubConnectWeb = false;
+        if (currentMillis < previousMillisConnectedWeb) {
+            previousMillisConnectedWeb = 0;
         }
-      } else {
-        bPubConnectWeb = false;
-      }
-
-      previousMillisConnectedWeb = currentMillis;
-    }
     
-    if ((LocalIpAdress == "") && (WiFi.status() == WL_CONNECTED)){
-        #if debug == 1
-          Serial.println("Entrou para conectar apos o WIFI retornar: ");
-        #endif
-        LocalIpAdress = WiFi.localIP().toString();
-    }
-    
-    if (bPubConnectWeb && !client->connected())
-    //if ((bPubConnectWeb) && !client->connected())
-    {
-        reconnect_mqtt(strPubMsgErro);        
-    }
-
-    if (bPubConnectWeb) {
-      client->loop();
-    }
-    
-    currentMillis = millis();
-    
-    if (currentMillis < previousMillis) {
-        previousMillis = 0;
-    }
-    
-    if (currentMillis - previousMillis >= long(config["interval"]) && strPubModo == "a")
-    {
-      if (fltTemperatura < float(config["temp"])) {
-        ligar_rele();
-      } else {
-        desligar_rele();
-      }
-      float newT = dht.readTemperature();
+        if (currentMillis - previousMillisConnectedWeb >= long(config["interval_mqtt"])) {
+            if (LocalIpAdress != "") {
+                if (connectedWeb(strPubMsgErro)) {
+                  bPubConnectWeb = true;
+                } else {
+                  bPubConnectWeb = false;
+                }
+            } else {
+                bPubConnectWeb = false;
+            }
       
-      if (!isnan(newT))
-      {
-          fltTemperatura = newT;
-          #if debug == 1
-              Serial.print("fltTemperatura: ");
-              Serial.println(fltTemperatura);
-          #endif
-      }
-      else {
-          fltTemperatura = 0;
-      }
-      float newH = dht.readHumidity();
-      if (!isnan(newH))
-      {
-          fltHumidade = newH;
-          #if debug == 1
-              Serial.print("fltHumidade: ");
-              Serial.println(fltHumidade);
-          #endif
-      }
-      else {
-          fltHumidade = 0;
-          
-    }
+            previousMillisConnectedWeb = currentMillis;
+        }
 
-    if (estadoAtual == 1) {
-        display_temp_hum(fltTemperatura, fltHumidade);
-    }
-    
-    previousMillis = currentMillis;
-   }
-    if (byte(config["usar_display"] == "1")) {
-      if (currentMillis < lngdebounceBotao) {
-          lngdebounceBotao = 0;
-      }
-      estadoBotao = digitalRead(pinBotao);
-      if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
-        if (!estadoBotao && estadoBotaoAnt) {
-            estadoAtual++;
-            if (estadoAtual > 5) {
-               estadoAtual = 1;
-            }
+        if ((LocalIpAdress == "") && (WiFi.status() == WL_CONNECTED)){
             #if debug == 1
-              Serial.print("estadoAtual: ");
-              Serial.println(estadoAtual);
+              Serial.println("Entrou para conectar apos o WIFI retornar: ");
             #endif
-            switch (estadoAtual) {
-              case 1: {
-                display_temp_hum(fltTemperatura, fltHumidade);
-                break;
-              }
-              case 2: {
-                  display_ip(LocalIpAdress);
-                  break;
-               }
-               case 3 : {
-                  display_temp_config(config["temp"], config["qtd_boot"]);
-                  break;
-               }
-               case 4 : {
-                  if (strPubModo == "a") {
-                      display_msg("Modo de operacao", "Automatico");
-                  } else {
-                      display_msg("Modo de operacao", "Manual");
-                  }
-                  break;
-               }
-               case 5 : {
-                  display_error(strPubMsgErro);
-                  break;
-               }
-               
+            LocalIpAdress = WiFi.localIP().toString();
+        }
+
+        if (bPubConnectWeb && !client->connected())
+        //if ((bPubConnectWeb) && !client->connected())
+        {
+            reconnect_mqtt(strPubMsgErro);
+        }
+
+        if (bPubConnectWeb) {
+            client->loop();
+        }
+
+        currentMillis = millis();
+
+        if (currentMillis < previousMillis) {
+            previousMillis = 0;
+        }
+
+        if (currentMillis - previousMillis >= long(config["interval"]) && strPubModo == "a")
+        {
+            if (fltTemperatura < float(config["temp"])) {
+              ligar_rele();
+            } else {
+              desligar_rele();
             }
-            lngdebounceBotao = millis();
-        }
-      }
-      estadoBotaoAnt = estadoBotao;
-    }
+            float newT = dht.readTemperature();
     
-    if (bPubConnectWeb) {
-      if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
-        snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
-        #if debug == 1
-            Serial.print("client: ");
-            Serial.println(client != 0);
-        #endif
-        if (client != 0) {
-          client->publish(config["topic"], msg);
-          #if debug == 1
-              Serial.println(msg);
-          #endif
+            if (!isnan(newT))
+            {
+                fltTemperatura = newT;
+                #if debug == 1
+                    Serial.print("fltTemperatura: ");
+                    Serial.println(fltTemperatura);
+                #endif
+            }
+            else {
+                fltTemperatura = 0;
+            }
+            float newH = dht.readHumidity();            
+            if (!isnan(newH))
+            {
+                fltHumidade = newH;
+                #if debug == 1
+                    Serial.print("fltHumidade: ");
+                    Serial.println(fltHumidade);
+                #endif
+            }
+            else {
+                fltHumidade = 0;      
+            }
+
+            if (estadoAtual == 1) {
+                display_temp_hum(fltTemperatura, fltHumidade);
+            }            
+
+            previousMillis = currentMillis;
+        } //verifica o intervalo e se o modo esta no automatico           
+
+        //tratar bug estouro millis()
+        if (currentMillis < lngdebounceBotao) {
+            lngdebounceBotao = 0;
         }
-         previousMillisMqtt = currentMillis;
-      }
-    }
-  }
+        
+        //botao para dar um reset na placa        
+        estadoBotaoReset = digitalRead(pinBotaoReset);
+        if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+          if (!estadoBotaoReset && estadoBotaoResetAnt) {
+              #if debug == 1
+                  Serial.println("botao reset precionado");
+              #endif
+              lngdebounceBotao = millis();     
+              config["wifi_ssid"] = "";
+              updateConfig(config);  
+              
+              ESP.restart();                   
+          }          
+        }    
+        estadoBotaoResetAnt = estadoBotaoReset;    
+           
+        if (byte(config["usar_display"] == "1")) {
+            estadoBotaoMenu = digitalRead(pinBotaoMenu);
+            if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+                if (!estadoBotaoMenu && estadoBotaoMenuAnt) {
+                    estadoAtual++;
+                    if (estadoAtual > 5) {
+                       estadoAtual = 1;
+                    }
+                    #if debug == 1
+                      Serial.print("estadoAtual: ");
+                      Serial.println(estadoAtual);
+                    #endif
+                    switch (estadoAtual) {
+                      case 1: {
+                        display_temp_hum(fltTemperatura, fltHumidade);
+                        break;
+                      }
+                      case 2: {
+                          display_ip(LocalIpAdress);
+                          break;
+                       }
+                       case 3 : {
+                          display_temp_config(config["temp"], config["qtd_boot"]);
+                          break;
+                       }
+                       case 4 : {
+                          if (strPubModo == "a") {
+                              display_msg("Modo de operacao", "Automatico");
+                          } else {
+                              display_msg("Modo de operacao", "Manual");
+                          }
+                          break;
+                       }
+                       case 5 : {
+                          display_error(strPubMsgErro);
+                          break;
+                       }            
+                    }
+                    lngdebounceBotao = millis();
+                } //botaoMenu pressionado
+            } //controle umbouncing botaoMenu
+            estadoBotaoMenuAnt = estadoBotaoMenu;
+        } //usar display
+
+        if (bPubConnectWeb) {
+            if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
+                snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
+                #if debug == 1
+                    Serial.print("client: ");
+                    Serial.println(client != 0);
+                #endif
+                if (client != 0) {
+                  client->publish(config["topic"], msg);
+                  #if debug == 1
+                      Serial.println(msg);
+                  #endif
+                }
+                 previousMillisMqtt = currentMillis;
+            } 
+        } //verifica se esta conectado e envia a mensagem para o MQTT
+
+    } //verifica se o modo de operacao   
 }

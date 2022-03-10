@@ -22,7 +22,7 @@
   }
 }
 
-void display_temp_config(float fltTempConfig, String strQtdBoot){
+void display_temp_config(float fltTempConfig, String strQtdBoot) {
   if (byte(config["usar_display"] == "1")) {
     lcd.clear();
     lcd.setCursor(0,0);
@@ -46,7 +46,7 @@ void display_error(String &strMsgErro)  {
   }
 }
 
- void display_vazio() {
+void display_vazio() {
   if (byte(config["usar_display"] == "1")) {
     lcd.clear();
   }
