@@ -64,8 +64,6 @@ char msg[MSG_BUFFER_SIZE];
 DHT dht(pinDHT, typeDHT);
 LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
 
-
-
 bool estadoBotao;
 bool estadoBotaoAnt = LOW;
 int estadoAtual = 1;

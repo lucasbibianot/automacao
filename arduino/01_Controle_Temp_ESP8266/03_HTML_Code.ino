@@ -219,7 +219,7 @@ const char config_html[] PROGMEM = R"rawliteral(
         header {
             display: flex;
             justify-content: center;
-            margin: 2rem 0 4rem 0;
+            margin-top: 2rem;
         }
 
         main {
@@ -235,22 +235,23 @@ const char config_html[] PROGMEM = R"rawliteral(
         }
 
         span {
-
             font-size: 2rem;
         }
 
         div .items {
             display: flex;
+            align-items: center;
             margin-bottom: 0rem;
         }
 
-        div .icon {
+        div .items {
             display: flex;
             justify-content: center;
-            align-items: center;
-            margin-right: 1rem;
-            width: 4.37rem;
-            font-size: 3.0rem;
+            gap: 1rem;
+        }
+
+        div .items .fas.fa-wifi {
+            font-size: 2rem;
         }
 
         h2 {
@@ -271,7 +272,7 @@ const char config_html[] PROGMEM = R"rawliteral(
             gap: 0.5rem;
             font-size: 3.0rem;
             width: 40.0rem;
-        }        
+        }
 
         div .content_button {
             display: flex;
@@ -280,7 +281,7 @@ const char config_html[] PROGMEM = R"rawliteral(
             gap: 1rem;
             font-size: 3.0rem;
             width: 40.0rem;
-        }             
+        }
 
         .units {
             font-size: 1.5rem;
@@ -307,6 +308,10 @@ const char config_html[] PROGMEM = R"rawliteral(
             font-size: 1rem;
         }
 
+        form .items:last-child {
+            margin: 2rem 0;
+        }
+
         form .input_string {
             border-radius: .5rem;
             padding: 1rem 2rem;
@@ -319,7 +324,7 @@ const char config_html[] PROGMEM = R"rawliteral(
             padding: 1rem 2rem;
             font-size: 1rem;
             width: 9.0rem;
-        }        
+        }
 
         form button {
             font-size: 1rem;
@@ -329,7 +334,7 @@ const char config_html[] PROGMEM = R"rawliteral(
             color: #fff;
             cursor: pointer;
             width: 20.0rem;
-        }            
+        }
 
         form button:hover {
             filter: brightness(.9);
@@ -339,13 +344,9 @@ const char config_html[] PROGMEM = R"rawliteral(
 <body onload="(read_config())">    
     <div class="container">
         <header>
-            <div class="items">
-                <div class="icon">
-                    <i class="fas fa-wifi" style="color:#00add6;"></i>
-                </div>
-                <div class="content">
-                    Configuracao
-                </div>                    
+            <div class="items" style="justify-content: center;">
+                <i class="fas fa-wifi" style="color:#00add6;"></i>
+                <h1>Configuracao</h1>
             </div>
         </header>
         <main>
