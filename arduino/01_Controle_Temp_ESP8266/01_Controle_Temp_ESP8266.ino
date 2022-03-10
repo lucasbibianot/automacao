@@ -23,7 +23,6 @@ DynamicJsonDocument config(2048);
 
 //Funcoes
 void handleConfig(AsyncWebServerRequest * request);
-void write_default_param(File &paramFile);
 void write_default_config(File &configFile);
 bool loadConfig(DynamicJsonDocument &doc);
 bool saveConfig(DynamicJsonDocument &doc, String novo);
@@ -87,7 +86,7 @@ const char* PARAM_INPUT_CONFIGTEMP = "input1";
 String LocalIpAdress;
 String strPubMsgErro = "";
 bool bPubConnectWeb = false;
-String modo = "a";
+String strPubModo = "a";
 
 void ligar_rele(){
   digitalWrite(pinRele, HIGH);
@@ -139,11 +138,11 @@ void setup()
         display_error(strPubMsgErro);
     }
   }
-  const String ssid = config["wifi-ssid"];
-  const String wifi_key = config["wifi-key"];
+  const String ssid = config["wifi_ssid"];
+  const String wifi_key = config["wifi_key"];
   
   if (ssid == "") {
-    const String soft_ap = config["soft-ap"];
+    const String soft_ap = config["soft_ap"];
     WiFi.softAP(soft_ap);
     LocalIpAdress = WiFi.softAPIP().toString();
     display_msg("Modo AP", LocalIpAdress);
@@ -253,7 +252,7 @@ void loop()
         previousMillis = 0;
     }
     
-    if (currentMillis - previousMillis >= long(config["interval"]) && modo == "a")
+    if (currentMillis - previousMillis >= long(config["interval"]) && strPubModo == "a")
     {
       if (fltTemperatura < float(config["temp"])) {
         ligar_rele();
@@ -301,7 +300,7 @@ void loop()
       if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
         if (!estadoBotao && estadoBotaoAnt) {
             estadoAtual++;
-            if (estadoAtual > 4) {
+            if (estadoAtual > 5) {
                estadoAtual = 1;
             }
             #if debug == 1
@@ -322,9 +321,18 @@ void loop()
                   break;
                }
                case 4 : {
+                  if (strPubModo == "a") {
+                      display_msg("Modo de operacao", "Automatico");
+                  } else {
+                      display_msg("Modo de operacao", "Manual");
+                  }
+                  break;
+               }
+               case 5 : {
                   display_error(strPubMsgErro);
                   break;
                }
+               
             }
             lngdebounceBotao = millis();
         }

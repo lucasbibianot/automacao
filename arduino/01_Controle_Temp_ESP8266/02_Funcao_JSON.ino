@@ -1,26 +1,9 @@
-void write_default_param(File &paramFile) {
-  paramFile = LittleFS.open("/param.json", "w");
-  const char default_param[] = R"rawliteral(
-  {
-    "temp": "0",
-    "qtd_boot": "0"
-  })rawliteral";
-  #if debug == 1
-      Serial.println("Failed to open param file");
-      Serial.println("Loading default param file");
-  #endif
-
-  paramFile.print(default_param);
-  delay(5);
-  paramFile.close();
-}
-
 void write_default_config(File &configFile) {
   configFile = LittleFS.open("/config.json", "w");
   const char default_config[] = R"rawliteral(
   {
-    "wifi-ssid": "",
-    "wifi-key": "",
+    "wifi_ssid": "",
+    "wifi_key": "",
     "topic": "device/sensor/",
     "topic_subscribe": "cmd/sensor/",
     "mqtt_server": "",
@@ -30,7 +13,7 @@ void write_default_config(File &configFile) {
     "mqtt_client_id": "",
     "mqtt_user": "",
     "mqtt_password": "",
-    "soft-ap": "ESP-123456",
+    "soft_ap": "ESP-123456",
     "temp": "0",
     "qtd_boot": "0",
     "interval" : "5000",
@@ -64,8 +47,8 @@ bool loadConfig(DynamicJsonDocument &doc) {
   strPubMsgErro = "";
   auto error = deserializeJson(doc, configFile);
   serializeJsonPretty(doc, Serial);
-  if (error || !doc.containsKey("soft-ap") || !doc.containsKey("usar_display")) {
-  //if (error || !doc.containsKey("soft-ap")) {
+  if (error || !doc.containsKey("soft_ap") || !doc.containsKey("usar_display")) {
+  //if (error || !doc.containsKey("soft_ap")) {
       configFile.close();
       write_default_config(configFile);
       configFile = LittleFS.open("/config.json", "r");
@@ -74,7 +57,6 @@ bool loadConfig(DynamicJsonDocument &doc) {
   configFile.close();
   return true;
 }
-
 
 bool saveConfig(DynamicJsonDocument &doc, String novo) {
   auto error = deserializeJson(doc, novo);

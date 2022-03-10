@@ -53,7 +53,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   #endif    
   StaticJsonDocument<256> doc;
   deserializeJson(doc, (const byte*)payload, length);
-  modo = String(doc["modo"]);
+  strPubModo = String(doc["modo"]);
   String device = doc["device"];
   serializeJsonPretty(doc, Serial);
   execute_operacao(device, int(doc["value"]));
@@ -115,7 +115,7 @@ bool connectedWeb(String &strMsgErro) {
       Serial.println("inicio funcao connectedWeb");
   #endif
   
-  if (clienteWeb.connect("142.250.218.110", 80) == true) {
+  if (clienteWeb.connect("google.com", 80) == true) {
     #if debug == 1       
         Serial.println("fim funcao connectedWeb");
     #endif    
