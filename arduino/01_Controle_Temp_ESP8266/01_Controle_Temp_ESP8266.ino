@@ -102,14 +102,14 @@ void setup()
     Serial.begin(115200);
     Serial.println("Inicio");
   #endif
-  
+
   LittleFS.begin();
-  
+
   if (loadConfig(config)) {
     #if debug == 1
         Serial.println("Carreguei as configurações");
     #endif
-    
+
     int intQtdBoot = 0;
     intQtdBoot = int(config["qtd_boot"]) + 1;
     String strQtdBoot = String(intQtdBoot);
@@ -120,15 +120,15 @@ void setup()
     Serial.print("Usando o Display: ");
     Serial.println(int(config["usar_display"]));
   #endif
-  
+
   dht.begin();
   server.begin();
   rotas_web_default();
-  
+
   pinMode(pinRele, OUTPUT);
   pinMode(pinBotao, INPUT);
 
-  if (byte(config["usar_display"] == "1" )) {    
+  if (byte(config["usar_display"] == "1" )) {
     lcd.init();
     lcd.backlight();
     lcd.clear();
@@ -140,13 +140,13 @@ void setup()
   }
   const String ssid = config["wifi_ssid"];
   const String wifi_key = config["wifi_key"];
-  
+
   if (ssid == "") {
     const String soft_ap = config["soft_ap"];
     WiFi.softAP(soft_ap);
     LocalIpAdress = WiFi.softAPIP().toString();
     display_msg("Modo AP", LocalIpAdress);
-    
+
     #if debug == 1
       Serial.println("Iniciar SoftAP");
       Serial.print("IP address: ");
@@ -156,11 +156,11 @@ void setup()
   else {
     operation_mode = 1;
     WiFi.begin(ssid, wifi_key);
-    
+
     #if debug == 1
         Serial.println("Connecting to WiFi");
     #endif
-    
+
     int iCont = 1;
     while ( (WiFi.status() != WL_CONNECTED) && (iCont < 16))
     {
@@ -172,7 +172,7 @@ void setup()
         display_msg("Conectando WIFI", String(iCont) );
         iCont++;
     }
-    
+
     if (WiFi.status() != WL_CONNECTED) {
         strPubMsgErro = "WIFI no connected";
     }
@@ -195,11 +195,11 @@ void setup()
     }
     rotas_web_modo_1();
   }
-  
+
   if (strPubMsgErro != "") {
     display_error(strPubMsgErro);
   }
-  
+
   #if debug == 1
     Serial.println("Fim Setup");
   #endif
@@ -208,13 +208,13 @@ void setup()
 void loop()
 {
   if (operation_mode == 1) {
-    
+
     currentMillis = millis();
 
     if (currentMillis < previousMillisConnectedWeb) {
         previousMillisConnectedWeb = 0;
     }
-    
+
     if (currentMillis - previousMillisConnectedWeb >= long(config["interval_mqtt"])) {
       if (LocalIpAdress != "") {
         if (connectedWeb(strPubMsgErro)) {
@@ -228,30 +228,30 @@ void loop()
 
       previousMillisConnectedWeb = currentMillis;
     }
-    
+
     if ((LocalIpAdress == "") && (WiFi.status() == WL_CONNECTED)){
         #if debug == 1
           Serial.println("Entrou para conectar apos o WIFI retornar: ");
         #endif
         LocalIpAdress = WiFi.localIP().toString();
     }
-    
+
     if (bPubConnectWeb && !client->connected())
     //if ((bPubConnectWeb) && !client->connected())
     {
-        reconnect_mqtt(strPubMsgErro);        
+        reconnect_mqtt(strPubMsgErro);
     }
 
     if (bPubConnectWeb) {
       client->loop();
     }
-    
+
     currentMillis = millis();
-    
+
     if (currentMillis < previousMillis) {
         previousMillis = 0;
     }
-    
+
     if (currentMillis - previousMillis >= long(config["interval"]) && strPubModo == "a")
     {
       if (fltTemperatura < float(config["temp"])) {
@@ -260,7 +260,7 @@ void loop()
         desligar_rele();
       }
       float newT = dht.readTemperature();
-      
+
       if (!isnan(newT))
       {
           fltTemperatura = newT;
@@ -283,13 +283,13 @@ void loop()
       }
       else {
           fltHumidade = 0;
-          
+
     }
 
     if (estadoAtual == 1) {
         display_temp_hum(fltTemperatura, fltHumidade);
     }
-    
+
     previousMillis = currentMillis;
    }
     if (byte(config["usar_display"] == "1")) {
@@ -332,14 +332,14 @@ void loop()
                   display_error(strPubMsgErro);
                   break;
                }
-               
+
             }
             lngdebounceBotao = millis();
         }
       }
       estadoBotaoAnt = estadoBotao;
     }
-    
+
     if (bPubConnectWeb) {
       if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
         snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));

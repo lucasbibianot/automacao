@@ -28,14 +28,14 @@ String processor(const String &var)
   return String();
 }
 
-String read_config() {    
+String read_config() {
     String json_string;
     serializeJsonPretty(config, json_string);
     return json_string;
 }
 
 void handleConfig(AsyncWebServerRequest * request) {
-   
+
     config["wifi_ssid"] = request->getParam("input_wifi_ssid", true)->value();
     config["wifi_key"] = request->getParam("input_wifi_key", true)->value();
     config["topic"] = request->getParam("input_topic", true)->value();
@@ -53,11 +53,11 @@ void handleConfig(AsyncWebServerRequest * request) {
     config["interval"] = request->getParam("input_interval", true)->value();
     config["interval_mqtt"] = request->getParam("input_interval_mqtt", true)->value();
     config["usar_display"] = request->getParam("input_usar_display", true)->value();
-    
+
     updateConfig(config);
 
     //const bool retorno = saveConfig(config, p->value().c_str());
-    
+
     ESP.restart();
 
     //request->send_P(200, "text/plain", "OK");
@@ -129,8 +129,8 @@ void rotas_web_modo_1() {
     server.on("/read_config", HTTP_GET, [](AsyncWebServerRequest * request)
     {
         request->send_P(200, "text/plain", String(read_config()).c_str());
-    }); 
-  
+    });
+
     server.on("/config", HTTP_GET, [](AsyncWebServerRequest * request) {
         request->send_P(200, "text/html", config_html, processor);
     });
