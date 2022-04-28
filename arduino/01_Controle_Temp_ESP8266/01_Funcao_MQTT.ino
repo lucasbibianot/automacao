@@ -41,12 +41,26 @@ void execute_operacao(String chave, int valor) {
         break;
     }
   } else if (String("temp") == chave) {
+      #if debug == 1
+        Serial.println("Alterando temperatura: ");
+        Serial.print(valor);
+        Serial.println("");
+      #endif    
       config["temp"] = valor;
       updateConfig(config);
   } else if (String("interval_mqtt") == chave) {
+      #if debug == 1
+        Serial.println("Alterando intervalo: ");
+        Serial.print(valor);
+        Serial.println("");
+      #endif        
       config["interval_mqtt"] = valor;
       updateConfig(config);
   } else if (String("reboot") == chave && valor == 1) {
+      #if debug == 1
+        Serial.println("Reinstart..... ");
+        Serial.println("");
+      #endif        
       ESP.restart();
   }
 }

@@ -16,7 +16,7 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
-#define debug 1
+#define debug 0
 #define MSG_BUFFER_SIZE (500)
 
 DynamicJsonDocument config(2048);
@@ -53,7 +53,7 @@ char msg[MSG_BUFFER_SIZE];
 #define typeDHT DHT22     // DHT22
 #define pinRele 14
 #define pinBotaoMenu 15
-#define pinBotaoReset 13
+#define pinBotaoReset 2 //pinBotaoReset 13
 
 #define tempoDebounce 300
 
@@ -63,7 +63,7 @@ LiquidCrystal_I2C lcd(enderecoLcd, colunasLcd, linhasLcd);
 bool estadoBotaoMenu;
 bool estadoBotaoReset;
 bool estadoBotaoMenuAnt = LOW;
-bool estadoBotaoResetAnt = LOW;
+bool estadoBotaoResetAnt = HIGH;
 
 int estadoAtual = 1;
 
@@ -124,7 +124,7 @@ void setup()
 
   pinMode(pinRele, OUTPUT);
   pinMode(pinBotaoMenu, INPUT);
-  pinMode(pinBotaoReset, INPUT);  
+  pinMode(pinBotaoReset, INPUT_PULLUP);  
 
   if (byte(config["usar_display"] == "1" )) {
     lcd.init();
@@ -180,16 +180,22 @@ void setup()
             Serial.println(WiFi.localIP());
         #endif
         LocalIpAdress = WiFi.localIP().toString();
-        if (connectedWeb(strPubMsgErro)) {
-            connect_mqtt(strPubMsgErro);
+        //if (connectedWeb(strPubMsgErro)) {
+        connect_mqtt(strPubMsgErro);
+        
+        client->subscribe(config["topic_subscribe"]);
+        #if debug == 1
+          String subscribed = config["topic_subscribe"];
+          Serial.print("Subscribed: ");
+          Serial.println(subscribed);
+        #endif
+        if (!client->connected()) {
             bPubConnectWeb = true;
-            client->subscribe(config["topic_subscribe"]);
-            #if debug == 1
-              String subscribed = config["topic_subscribe"];
-              Serial.print("Subscribed: ");
-              Serial.println(subscribed);
-            #endif
+        } else {
+            bPubConnectWeb = false;
+            strPubMsgErro = "No Connect Web";
         }
+        //}
     }
     rotas_web_modo_1();
   }
@@ -215,13 +221,24 @@ void loop()
     
         if (currentMillis - previousMillisConnectedWeb >= long(config["interval_mqtt"])) {
             if (LocalIpAdress != "") {
-                if (connectedWeb(strPubMsgErro)) {
+
+                #if debug == 1
+                    Serial.print("client: ");
+                    Serial.println(client->connected());
+                #endif              
+                //if (connectedWeb(strPubMsgErro)) {
+                if (client->connected()) {
                   bPubConnectWeb = true;
+                  strPubMsgErro = "";
                 } else {
                   bPubConnectWeb = false;
+                  strPubMsgErro = "No Connect Web";
+                           
+                  reconnect_mqtt(strPubMsgErro);        
                 }
             } else {
                 bPubConnectWeb = false;
+                strPubMsgErro = "No Connect Web";
             }
       
             previousMillisConnectedWeb = currentMillis;
@@ -232,16 +249,22 @@ void loop()
               Serial.println("Entrou para conectar apos o WIFI retornar: ");
             #endif
             LocalIpAdress = WiFi.localIP().toString();
+            
+            connect_mqtt(strPubMsgErro);            
+            client->subscribe(config["topic_subscribe"]);
+            
+            if (!client->connected()) {
+                bPubConnectWeb = true;
+            } else {
+                bPubConnectWeb = false;
+                strPubMsgErro = "No Connect Web";
+            }            
         }
 
-        if (bPubConnectWeb && !client->connected())
-        //if ((bPubConnectWeb) && !client->connected())
+        //if (bPubConnectWeb && !client->connected())
+        if (bPubConnectWeb)
         {
-            reconnect_mqtt(strPubMsgErro);
-        }
-
-        if (bPubConnectWeb) {
-            client->loop();
+            client->loop();            
         }
 
         currentMillis = millis();
@@ -316,7 +339,7 @@ void loop()
             if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
                 if (!estadoBotaoMenu && estadoBotaoMenuAnt) {
                     estadoAtual++;
-                    if (estadoAtual > 5) {
+                    if (estadoAtual > 6) {
                        estadoAtual = 1;
                     }
                     #if debug == 1
@@ -345,6 +368,12 @@ void loop()
                           break;
                        }
                        case 5 : {
+                          String strMsg1 = "Time Sensor: " + String(long(config["interval"]) /1000);
+                          String strMsg2 = "Time Mqtt:   " + String(long(config["interval_mqtt"]) /1000);
+                          display_msg(strMsg1, strMsg2);
+                          break;
+                       }                            
+                       case 6 : {
                           display_error(strPubMsgErro);
                           break;
                        }            
@@ -358,10 +387,6 @@ void loop()
         if (bPubConnectWeb) {
             if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
                 snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
-                #if debug == 1
-                    Serial.print("client: ");
-                    Serial.println(client != 0);
-                #endif
                 if (client != 0) {
                   client->publish(config["topic"], msg);
                   #if debug == 1
@@ -371,6 +396,5 @@ void loop()
                  previousMillisMqtt = currentMillis;
             } 
         } //verifica se esta conectado e envia a mensagem para o MQTT
-
     } //verifica se o modo de operacao   
 }
