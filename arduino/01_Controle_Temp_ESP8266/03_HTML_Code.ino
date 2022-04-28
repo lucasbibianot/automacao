@@ -374,7 +374,7 @@ const char config_html[] PROGMEM = R"rawliteral(
                                 <label>Topic: &nbsp;</label>
                             </div>
                             <div class="content">
-                                <input class="input_string" type="string" id="input_topic" name="input_topic" placeholder="Digite o topic">
+                                <input class="input_string" type="string" id="input_topic" name="input_topic" placeholder="Digite o topic" maxlength="55">
                             </div>
                         </div>
                         <div class="items">
@@ -489,6 +489,23 @@ const char config_html[] PROGMEM = R"rawliteral(
                             </div>
                         </div>
                         <div class="items">
+                            <div class="titulo">
+                                <label>Modo de Operacao: &nbsp;</label>
+                            </div>
+                            <div class="content">
+                                <input class="input_string" type="string" id="input_modo_operacao" name="input_modo_operacao" placeholder="a ou m">
+                            </div>
+                        </div>
+                        <div class="items">
+                            <div class="titulo">
+                                <label>Nome do Dispositivo: &nbsp;</label>
+                            </div>
+                            <div class="content">
+                                <input class="input_string" type="string" id="input_nome_dispositivo" name="input_nome_dispositivo" placeholder="">
+                            </div>
+                        </div>
+                                                
+                        <div class="items">
                             <div class="content_button">
                                 <button type="submit" class="submit">Enviar</button>
                             </div>
@@ -525,6 +542,8 @@ const char config_html[] PROGMEM = R"rawliteral(
                 document.getElementById("input_interval").value = myArr.interval;
                 document.getElementById("input_interval_mqtt").value = myArr.interval_mqtt;
                 document.getElementById("input_usar_display").value = myArr.usar_display;
+                document.getElementById("input_modo_operacao").value = myArr.modo_operacao;
+                document.getElementById("input_nome_dispositivo").value = myArr.nome_dispositivo;                
             }
         };
         xhttp.open("GET", "/read_config", true);

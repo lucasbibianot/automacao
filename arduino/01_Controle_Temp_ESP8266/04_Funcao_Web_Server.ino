@@ -52,7 +52,9 @@ void handleConfig(AsyncWebServerRequest * request) {
     config["qtd_boot"] = request->getParam("input_qtd_boot", true)->value();
     config["interval"] = request->getParam("input_interval", true)->value();
     config["interval_mqtt"] = request->getParam("input_interval_mqtt", true)->value();
-    config["usar_display"] = request->getParam("input_usar_display", true)->value();
+    config["usar_display"] = request->getParam("input_usar_display", true)->value();    
+    config["modo_operacao"] = request->getParam("input_modo_operacao", true)->value();
+    config["nome_dispositivo"] = request->getParam("input_nome_dispositivo", true)->value();
 
     updateConfig(config);
 

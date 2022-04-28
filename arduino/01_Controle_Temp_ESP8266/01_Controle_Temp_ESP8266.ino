@@ -39,6 +39,8 @@ void display_msg(String strMsg1, String strMsg2 = " ");
 bool connectedWeb(String &strMsgErro);
 void reconnect_mqtt(String &strMsgErro);
 void connect_mqtt(String &strMsgErro);
+void publish_msg_mqtt();
+String Hash256(String InputString);
 
 unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
 BearSSL::CertStore certStore;
@@ -84,6 +86,7 @@ String LocalIpAdress;
 String strPubMsgErro = "";
 bool bPubConnectWeb = false;
 String strPubModo = "a";
+String strPubHashTopic = "";
 
 void ligar_rele(){
   digitalWrite(pinRele, HIGH);
@@ -112,6 +115,9 @@ void setup()
     String strQtdBoot = String(intQtdBoot);
     config["qtd_boot"] = strQtdBoot;
     updateConfig(config);
+
+    //strPubModo = config["modo_operacao"];
+    strPubModo =  String(config["modo_operacao"]);
   }
   #if debug == 1
     Serial.print("Usando o Display: ");
@@ -205,6 +211,15 @@ void setup()
   }
 
   #if debug == 1
+    //Serial.println("Hash256");    
+    //Serial.println(Hash256("device/sensor/ronan/granja/1"));
+
+    Serial.println("Topic");        
+    strPubHashTopic = String(config["topic"]);
+    Serial.println(strPubHashTopic);  
+    strPubHashTopic = Hash256(strPubHashTopic);
+    Serial.println(strPubHashTopic);
+
     Serial.println("Fim Setup");
   #endif
 }
@@ -319,17 +334,39 @@ void loop()
         }
         
         //botao para dar um reset na placa        
-        estadoBotaoReset = digitalRead(pinBotaoReset);
+        estadoBotaoReset = digitalRead(pinBotaoReset);        
         if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+
+          bool bolTimeBotao = false;
           if (!estadoBotaoReset && estadoBotaoResetAnt) {
+
               #if debug == 1
                   Serial.println("botao reset precionado");
               #endif
-              lngdebounceBotao = millis();     
-              config["wifi_ssid"] = "";
-              updateConfig(config);  
+                      
+              int iTimeBotao = 0;
+              while(!digitalRead(pinBotaoReset)) {
+                  if ( (millis() - lngdebounceBotao) > 1000) {
+                      iTimeBotao ++;
+                      lngdebounceBotao = millis();
+                      #if debug == 1
+                          Serial.println("botao reset precionado loop: ");
+                          Serial.println(iTimeBotao);                      
+                      #endif                             
+                  }
+
+                  if (iTimeBotao == 5) {
+                      bolTimeBotao = true;   
+                      break;                   
+                  }
+              }
+              if (bolTimeBotao) {
+                  config["wifi_ssid"] = "";
+                  updateConfig(config);  
               
-              ESP.restart();                   
+                  ESP.restart();                   
+              }
+              lngdebounceBotao = millis();
           }          
         }    
         estadoBotaoResetAnt = estadoBotaoReset;    
@@ -386,14 +423,16 @@ void loop()
 
         if (bPubConnectWeb) {
             if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
-                snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)));
-                if (client != 0) {
-                  client->publish(config["topic"], msg);
-                  #if debug == 1
-                      Serial.println(msg);
-                  #endif
-                }
-                 previousMillisMqtt = currentMillis;
+                
+                //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s, \"modoOperacao\": %s, \"nomeDispositivo\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)), String(config["modo_operacao"]).c_str(), String(config["nome_dispositivo"]).c_str());
+                //if (client != 0) {
+                //  client->publish(config["topic"], msg);
+                //  #if debug == 1
+                //      Serial.println(msg);
+                //  #endif
+                //}
+                publish_msg_mqtt();
+                previousMillisMqtt = currentMillis;
             } 
         } //verifica se esta conectado e envia a mensagem para o MQTT
     } //verifica se o modo de operacao   

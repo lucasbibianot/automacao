@@ -18,7 +18,9 @@ void write_default_config(File &configFile) {
     "qtd_boot": "0",
     "interval" : "5000",
     "interval_mqtt": "30000",
-    "usar_display": "1"
+    "usar_display": "1",
+    "modo_operacao": "a",
+    "nome_dispositivo": ""
   })rawliteral";
   #if debug == 1
     Serial.println("Failed to open config file");
@@ -47,7 +49,7 @@ bool loadConfig(DynamicJsonDocument &doc) {
   strPubMsgErro = "";
   auto error = deserializeJson(doc, configFile);
   serializeJsonPretty(doc, Serial);
-  if (error || !doc.containsKey("soft_ap") || !doc.containsKey("usar_display")) {
+  if (error || !doc.containsKey("soft_ap") || !doc.containsKey("nome_dispositivo")) {
   //if (error || !doc.containsKey("soft_ap")) {
       configFile.close();
       write_default_config(configFile);

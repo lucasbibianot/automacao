@@ -74,10 +74,16 @@ void callback(char *topic, byte *payload, unsigned int length)
   #endif
   StaticJsonDocument<256> doc;
   deserializeJson(doc, (const byte*)payload, length);
+  
   strPubModo = String(doc["modo"]);
   String device = doc["device"];
+
+  config["modo_operacao"] = strPubModo;
+  updateConfig(config);
+  
   serializeJsonPretty(doc, Serial);
   execute_operacao(device, int(doc["value"]));
+  publish_msg_mqtt();
 }
 
 
@@ -153,3 +159,24 @@ bool connectedWeb(String &strMsgErro) {
     return false;
   }
 }
+
+void publish_msg_mqtt()
+{    
+    snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s, \"modo_operacao\": \"%s\", \"nome_dispositivo\": \"%s\", \"hash\": \"%s\" }", 
+              fltTemperatura, 
+              fltHumidade, 
+              float(config["temp"]), 
+              String(config["qtd_boot"]).c_str(), 
+              String(config["topic_subscribe"]).c_str(), 
+              String(digitalRead(pinRele)), 
+              String(config["modo_operacao"]).c_str(), 
+              String(config["nome_dispositivo"]).c_str(),
+              strPubHashTopic.c_str());
+              
+    if (client != 0) {
+      client->publish(config["topic"], msg);
+      #if debug == 1
+          Serial.println(msg);
+      #endif
+    }
+}                
