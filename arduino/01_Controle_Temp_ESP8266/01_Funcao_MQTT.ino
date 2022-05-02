@@ -105,6 +105,7 @@ void connect_mqtt(String &strMsgErro) {
   client = new PubSubClient(*bear);
   const char* mqq_server = config["mqtt_server"];
   client->setServer(mqq_server, (uint16_t) config["mqtt_server_port"]);
+  client->setBufferSize(512);
   client->setCallback(callback);
   client->connect(config["mqtt_client_id"], config["mqtt_user"], config["mqtt_password"]);
 }
@@ -160,23 +161,56 @@ bool connectedWeb(String &strMsgErro) {
   }
 }
 
-void publish_msg_mqtt()
-{    
-    snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s, \"modo_operacao\": \"%s\", \"nome_dispositivo\": \"%s\", \"hash\": \"%s\" }", 
-              fltTemperatura, 
-              fltHumidade, 
-              float(config["temp"]), 
-              String(config["qtd_boot"]).c_str(), 
-              String(config["topic_subscribe"]).c_str(), 
-              String(digitalRead(pinRele)), 
-              String(config["modo_operacao"]).c_str(), 
-              String(config["nome_dispositivo"]).c_str(),
-              strPubHashTopic.c_str());
-              
+String build_msg_mqtt() {
+    DynamicJsonDocument msgJson(1024);
+    char msg[MSG_BUFFER_SIZE];
+
+    JsonObject temp  = msgJson.createNestedObject("temp");
+    temp["valor"] = fltTemperatura;
+    temp["tipo"] = "M";
+    JsonObject hum  = msgJson.createNestedObject("hum");
+    hum["valor"] = fltHumidade;
+    hum["tipo"] = "M";    
+    JsonObject temp_config  = msgJson.createNestedObject("temp_config");
+    temp_config["valor"] = float(config["temp"]);
+    temp_config["tipo"] = "C";    
+    JsonObject qtd_boot  = msgJson.createNestedObject("qtd_boot");
+    qtd_boot["valor"] = String(config["qtd_boot"]);
+    qtd_boot["tipo"] = "C";   
+    JsonObject topic_subscribe  = msgJson.createNestedObject("topic_subscribe");
+    topic_subscribe["valor"] = String(config["topic_subscribe"]);
+    topic_subscribe["tipo"] = "C";  
+    JsonObject estadoRele  = msgJson.createNestedObject("estadoRele");
+    estadoRele["valor"] = String(digitalRead(pinRele));
+    estadoRele["tipo"] = "C";  
+    //msgJson["estadoRele"] = String(digitalRead(pinRele));
+    JsonObject modo_operacao  = msgJson.createNestedObject("modo_operacao");
+    modo_operacao["valor"] = String(config["modo_operacao"]);
+    modo_operacao["tipo"] = "C";  
+    //msgJson["modo_operacao"] = String(config["modo_operacao"]);
+    JsonObject nome_dispositivo  = msgJson.createNestedObject("nome_dispositivo");
+    nome_dispositivo["valor"] = String(config["nome_dispositivo"]);
+    nome_dispositivo["tipo"] = "C";      
+    //msgJson["nome_dispositivo"] = String(config["nome_dispositivo"]);
+    JsonObject hash_  = msgJson.createNestedObject("hash");
+    hash_["valor"] = strPubHashTopic;
+    hash_["tipo"] = "C";  
+    //msgJson["hash"] = strPubHashTopic;
+    serializeJson(msgJson, msg);  
+    return msg;
+  
+}
+
+
+void publish_msg_mqtt() {
+    char msg[MSG_BUFFER_SIZE];
+    build_msg_mqtt().toCharArray(msg, MSG_BUFFER_SIZE);    
     if (client != 0) {
       client->publish(config["topic"], msg);
       #if debug == 1
           Serial.println(msg);
       #endif
-    }
-}                
+    } 
+}
+   
+               

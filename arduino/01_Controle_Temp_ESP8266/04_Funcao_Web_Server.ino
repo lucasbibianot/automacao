@@ -18,7 +18,7 @@ String processor(const String &var)
   }
   else if (var == "MQTT")
   {
-    return String(msg);
+    return build_msg_mqtt();
   }
   else if (var == "JSON_STRING") {
     String json_string;
@@ -88,6 +88,8 @@ void rotas_web_modo_1() {
 
     server.on("/mqtt", HTTP_GET, [](AsyncWebServerRequest * request)
     {
+        char msg[MSG_BUFFER_SIZE];
+        build_msg_mqtt().toCharArray(msg, MSG_BUFFER_SIZE);   
         request->send_P(200, "text/plain", String(msg).c_str());
     });
 

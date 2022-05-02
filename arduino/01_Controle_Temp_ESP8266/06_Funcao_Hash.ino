@@ -82,6 +82,8 @@ unsigned long GetSigma1 (unsigned long InputHash) {
 // Function PrintWithLeadingZero
 unsigned long TempLz;
 String PrintWithLeadingZero (unsigned long ReceiveUnsignedLong) {
+  char msg[MSG_BUFFER_SIZE];
+
   String t1, t2, t3, t4, t5, t6, t7, t8;
   TempLz = ReceiveUnsignedLong & 0xf0000000; TempLz = TempLz >> 28; t1 = String(TempLz,HEX); //Serial.print(TempLz, HEX);
     

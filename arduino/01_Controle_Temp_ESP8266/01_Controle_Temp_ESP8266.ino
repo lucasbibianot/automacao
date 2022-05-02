@@ -16,10 +16,11 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
-#define debug 0
+#define debug 1
 #define MSG_BUFFER_SIZE (500)
 
 DynamicJsonDocument config(2048);
+
 
 //Funcoes
 void handleConfig(AsyncWebServerRequest * request);
@@ -41,11 +42,11 @@ void reconnect_mqtt(String &strMsgErro);
 void connect_mqtt(String &strMsgErro);
 void publish_msg_mqtt();
 String Hash256(String InputString);
+String build_msg_mqtt();
 
 unsigned int operation_mode = 0; //0 - AP, 1 - NORMAL
 BearSSL::CertStore certStore;
 PubSubClient *client;
-char msg[MSG_BUFFER_SIZE];
 
 #define enderecoLcd  0x27
 #define colunasLcd   16
@@ -160,6 +161,7 @@ void setup()
   else {
     operation_mode = 1;
     WiFi.begin(ssid, wifi_key);
+    WiFi.setAutoReconnect (true);
 
     #if debug == 1
         Serial.println("Connecting to WiFi");
@@ -423,15 +425,7 @@ void loop()
 
         if (bPubConnectWeb) {
             if (currentMillis - previousMillisMqtt >= long(config["interval_mqtt"])) {
-                
-                //snprintf(msg, MSG_BUFFER_SIZE, "{\"temp\": %.2f, \"hum\": %.2f, \"temp_config\": %.2f, \"qtd_boot\": %s, \"topic_subscribe\": \"%s\", \"estadoRele\": %s, \"modoOperacao\": %s, \"nomeDispositivo\": %s }", fltTemperatura, fltHumidade, float(config["temp"]), String(config["qtd_boot"]).c_str(), String(config["topic_subscribe"]).c_str(), String(digitalRead(pinRele)), String(config["modo_operacao"]).c_str(), String(config["nome_dispositivo"]).c_str());
-                //if (client != 0) {
-                //  client->publish(config["topic"], msg);
-                //  #if debug == 1
-                //      Serial.println(msg);
-                //  #endif
-                //}
-                publish_msg_mqtt();
+                publish_msg_mqtt();                             
                 previousMillisMqtt = currentMillis;
             } 
         } //verifica se esta conectado e envia a mensagem para o MQTT
