@@ -171,7 +171,7 @@ void publish_msg_mqtt()
               String(digitalRead(pinRele)), 
               String(config["modo_operacao"]).c_str(), 
               String(config["nome_dispositivo"]).c_str(),
-              strPubHashTopic.c_str());
+              String(config["topic"]));
               
     if (client != 0) {
       client->publish(config["topic"], msg);
