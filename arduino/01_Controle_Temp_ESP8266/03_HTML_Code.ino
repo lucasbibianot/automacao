@@ -185,10 +185,10 @@ const char index_html[] PROGMEM = R"rawliteral(
                 //document.getElementById("mqtt").innerHTML = this.responseText;
 
                 var myArr = JSON.parse(this.responseText);
-                document.getElementById("temp_config").innerHTML = myArr.temp_config.valor;
-                document.getElementById("qtd_boot").innerHTML = myArr.qtd_boot.valor;
-                document.getElementById("humidity").innerHTML = myArr.hum.valor;
-                document.getElementById("temperature").innerHTML = myArr.temp.valor;
+                document.getElementById("temp_config").innerHTML = myArr.temp_config.valor.toFixed(2);
+                document.getElementById("qtd_boot").innerHTML = myArr.qtd_boot.valor.toFixed(2);
+                document.getElementById("humidity").innerHTML = myArr.hum.valor.toFixed(2);
+                document.getElementById("temperature").innerHTML = myArr.temp.valor.toFixed(2);
             }
         };
         xhttp.open("GET", "/mqtt", true);
