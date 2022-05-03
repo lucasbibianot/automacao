@@ -25,6 +25,10 @@ String processor(const String &var)
     serializeJsonPretty(config, json_string);
     return json_string;
   }
+  else if (var == "NOME")
+  {
+    return String(config["nome_dispositivo"]);
+  }
   return String();
 }
 

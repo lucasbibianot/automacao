@@ -40,7 +40,7 @@ void execute_operacao(String chave, int valor) {
       default:
         break;
     }
-  } else if (String("temp") == chave) {
+  } else if (String("temp_config") == chave) {
       #if debug == 1
         Serial.println("Alterando temperatura: ");
         Serial.print(valor);
@@ -175,13 +175,13 @@ String build_msg_mqtt() {
     temp_config["valor"] = float(config["temp"]);
     temp_config["tipo"] = "M";    
     JsonObject qtd_boot  = msgJson.createNestedObject("qtd_boot");
-    qtd_boot["valor"] = String(config["qtd_boot"]);
+    qtd_boot["valor"] = int(config["qtd_boot"]);
     qtd_boot["tipo"] = "M";   
     JsonObject topic_subscribe  = msgJson.createNestedObject("topic_subscribe");
     topic_subscribe["valor"] = String(config["topic_subscribe"]);
     topic_subscribe["tipo"] = "C";  
     JsonObject estadoRele  = msgJson.createNestedObject("estadoRele");
-    estadoRele["valor"] = String(digitalRead(pinRele));
+    estadoRele["valor"] = int(digitalRead(pinRele));
     estadoRele["tipo"] = "M";  
     //msgJson["estadoRele"] = String(digitalRead(pinRele));
     JsonObject modo_operacao  = msgJson.createNestedObject("modo_operacao");

@@ -108,7 +108,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
     <div class="container">
         <header>
-            <h2>Controle Bercario Granja</h2>
+            <h2>%NOME%</h2>
         </header>
 
         <main>
