@@ -16,7 +16,7 @@
 #include <DHT.h>
 #include <LiquidCrystal_I2C.h>
 
-#define debug 1
+#define debug 0
 #define MSG_BUFFER_SIZE (500)
 
 DynamicJsonDocument config(2048);
