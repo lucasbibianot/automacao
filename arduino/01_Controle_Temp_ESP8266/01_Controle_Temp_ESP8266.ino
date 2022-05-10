@@ -337,7 +337,7 @@ void loop()
         
         //botao para dar um reset na placa        
         estadoBotaoReset = digitalRead(pinBotaoReset);        
-        if ( (currentMillis - lngdebounceBotao) > tempoDebounce) {
+        if ( (millis() - lngdebounceBotao) > tempoDebounce) {
 
           bool bolTimeBotao = false;
           if (!estadoBotaoReset && estadoBotaoResetAnt) {
@@ -350,11 +350,14 @@ void loop()
               while(!digitalRead(pinBotaoReset)) {
                   if ( (millis() - lngdebounceBotao) > 1000) {
                       iTimeBotao ++;
-                      lngdebounceBotao = millis();
+                      
                       #if debug == 1
                           Serial.println("botao reset precionado loop: ");
                           Serial.println(iTimeBotao);                      
-                      #endif                             
+                      #endif  
+                      delay(10);
+                      display_msg("botao rst pres", String(iTimeBotao));     
+                      lngdebounceBotao = millis();                      
                   }
 
                   if (iTimeBotao == 5) {
@@ -362,14 +365,20 @@ void loop()
                       break;                   
                   }
               }
+              
               if (bolTimeBotao) {
+                  display_msg("Resetando...", "");
+                  delay(1000);
                   config["wifi_ssid"] = "";
+                  delay(1000);
                   updateConfig(config);  
+                  delay(1000);                  
               
                   ESP.restart();                   
-              }
-              lngdebounceBotao = millis();
-          }          
+              }              
+              lngdebounceBotao = millis(); 
+          }
+                   
         }    
         estadoBotaoResetAnt = estadoBotaoReset;    
            
