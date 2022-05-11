@@ -78,6 +78,7 @@ unsigned long previousMillisMqtt = 0;
 unsigned long currentMillisMqtt = millis();
 unsigned long currentMillis = millis();
 unsigned long previousMillisBtn = 0;
+unsigned long previousMillisRadio = 0;
 unsigned long lngdebounceBotao;
 unsigned long previousMillisConnectedWeb = 0;
 
@@ -87,6 +88,72 @@ String strPubMsgErro = "";
 bool bPubConnectWeb = false;
 String strPubModo = "a";
 String strPubHashTopic = "";
+
+
+struct estruturaDadosRF
+{
+   boolean ligando = false;   //Esta variavel será usada para solicitar os dados do outro aparelho. Será útil quando o aparelho solicitante esta sendo ligado, para manter os valores do aparelho que já esta ligado.
+   boolean alterado = false;
+   boolean botao1 = false;
+   boolean botao2 = false;
+   int potenciometro1 = 0;
+   boolean sensor1 = false;
+   boolean sensor2 = false;
+   boolean sensor3 = false;
+   boolean sensor4 = false;
+   boolean sensor5 = false;
+   boolean sensor6 = false;
+};
+
+typedef struct estruturaDadosRF tipoDadosRF;
+tipoDadosRF dadosRF;
+tipoDadosRF dadosRecebidos;
+boolean transmitido = true;
+boolean alterado = false;
+RF24 radio(2,15);
+boolean botao2Ant = LOW;
+boolean botao2    = LOW;
+uint64_t enderecos[6] = {0x7878787878LL,
+                      0xB3B4B5B6F1LL,
+                      0xB3B4B5B6CDLL,
+                      0xB3B4B5B6A3LL,
+                      0xB3B4B5B60FLL,
+                      0xB3B4B5B605LL
+                      };
+#define tempoParado 1000
+
+
+void setup_radio() {
+  #if debug == 1
+    Serial.println(F("Iniciando rádio"));
+    display_msg("Radio setup");
+  #endif
+  if (!radio.begin()) {
+    #if debug == 1
+      Serial.println(F("radio hardware is not responding!!"));
+    #endif
+    while (1) {} // hold in infinite loop
+  }
+  radio.setChannel(100);
+  radio.setPALevel(RF24_PA_LOW);
+  radio.setDataRate(RF24_250KBPS);
+  radio.openWritingPipe(enderecos[4]);
+  radio.openReadingPipe(1, enderecos[1]);
+  radio.openReadingPipe(2, enderecos[2]);
+  // dadosRF.ligando = true;
+  // radio.stopListening();
+  // long tempoInicio = millis();
+  // while ( !radio.write( &dadosRF, sizeof(tipoDadosRF) ) ) {
+  //    if ((millis() - tempoInicio) > 2000) {
+  //       break;
+  //    }
+  // }
+  // dadosRF.ligando = false;
+  radio.startListening();
+  #if debug == 1
+    radio.printPrettyDetails();
+  #endif
+}
 
 
 void loop_button(){
@@ -197,14 +264,57 @@ void loop_button(){
 }
 
 
+void loop_radio() {
+    if (!alterado) {
+      if (radio.available()) {
+          Serial.println("radio.available()");
+          radio.read( &dadosRecebidos, sizeof(tipoDadosRF) );
+         //verifica se houve solicitação de envio dos dados
+         if (dadosRecebidos.ligando) {
+            alterado = true;
+         } else {
+            #if debug == 1
+              dadosRF = dadosRecebidos;
+              Serial.println("dados recebidos");
+              Serial.print("RECEBIDO dadosRF.botao1: ");
+              Serial.println(dadosRF.botao1);
+              Serial.print("RECEBIDO dadosRF.botao2: ");
+              Serial.println(dadosRF.botao2);
+              Serial.print("RECEBIDO dadosRF.potenciometro1: ");
+              Serial.println(dadosRF.potenciometro1);
+              if (dadosRF.potenciometro1 > 45) {
+                  ligar_rele();
+              } else {
+                desligar_rele();
+              }
+              radio.stopListening();
+              Serial.println("tentando transmitir");
+              transmitido = radio.write( &dadosRF, sizeof(tipoDadosRF) );
+              radio.setRetries(3,5);
+              if (transmitido) {
+                  Serial.println("Transmitido - houve alteracao dos dados");
+              }
+              radio.startListening();
+
+            #endif
+         }
+      } else {
+        #if debug == 1
+            Serial.println("Rádio Indisponível");
+        #endif
+      }
+  }
+}
 
 void ligar_rele(){
   digitalWrite(pinRele, HIGH);
 }
 
+
 void desligar_rele() {
   digitalWrite(pinRele, LOW);
 }
+
 
 void setup()
 {
@@ -238,8 +348,6 @@ void setup()
   rotas_web_default();
 
   pinMode(pinRele, OUTPUT);
-  // pinMode(pinBotaoMenu, INPUT);
-  // pinMode(pinBotaoReset, INPUT_PULLUP);
 
   if (byte(config["usar_display"] == "1" )) {
     lcd.init();
@@ -320,6 +428,8 @@ void setup()
     display_error(strPubMsgErro);
   }
 
+  setup_radio();
+
   #if debug == 1
     //Serial.println("Hash256");
     //Serial.println(Hash256("device/sensor/ronan/granja/1"));
@@ -338,10 +448,16 @@ void loop()
 {
     if (operation_mode == 1) {
         currentMillisMqtt = millis();
-        if (millis() - previousMillisBtn >= 200)
+        if (millis() - previousMillisBtn > 300)
         {
             loop_button();
             previousMillisBtn = millis();
+
+        }
+        if (millis() - previousMillisRadio > tempoParado)
+        {
+            loop_radio();
+            previousMillisRadio = millis();
 
         }
         if (currentMillisMqtt < previousMillisConnectedWeb) {
