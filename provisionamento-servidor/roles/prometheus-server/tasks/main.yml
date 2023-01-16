@@ -1,0 +1,144 @@
+---
+#TODO criar o diretorio, se preciso, antes. Se "aux_uses_lvm" for false e o base_dir
+#     não existir, teremos erro.
+
+- name: "Prometheus mount filesystem from LV"
+  ansible.posix.mount:
+    backup: yes
+    path: "{{ prometheus_base_dir }}"
+    src: "/dev/{{ vg_data_name }}/prometheus"
+    fstype: xfs
+    #opts:
+    state: mounted
+  when: aux_uses_lvm
+  tags:
+    - kubetrt3.prometheus-server.dirs
+
+- name: "Prometheus config directory (bind volume)"
+  file:
+    path: "{{ prometheus_base_dir }}/config"
+    state: directory
+    group: nfsnobody
+    mode: 0770
+  tags:
+    - kubetrt3.prometheus-server.dirs
+
+- name: "Prometheus storage directory (bind volume)"
+  file:
+    path: "{{ prometheus_base_dir }}/storage"
+    state: directory
+    group: nfsnobody
+    mode: 0770
+  tags:
+    - kubetrt3.prometheus-server.dirs
+- name: "Prometheus tls directory (bind volume)"
+  file:
+    path: "{{ prometheus_base_dir }}/tls"
+    state: directory
+    group: nfsnobody
+    mode: 0770
+  tags:
+    - kubetrt3.prometheus-server.dirs
+
+- name: "Copia certificado raiz do k8s para o host prometheus"
+  copy:
+    content: "{{ kubernetes_ca_certificate }}"
+    dest: "{{ prometheus_base_dir }}/tls/ca.crt"
+    mode: 0444
+  notify: "reload prometheus topic"
+  tags:
+    - kubetrt3.prometheus-server.x509
+
+- name: "Copia certificados (raiz e peer) do etcd para o host prometheus"
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ prometheus_base_dir }}/tls/{{ item.dest }}"
+    mode: 0444
+  loop:
+    - { src: "{{ prometheus_etcd_ca_file }}", dest: "etcd-ca.crt" }
+    - { src: "{{ prometheus_etcd_peer_file }}", dest: "etcd-peer.crt" }
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: "reload prometheus topic"
+  tags:
+    - kubetrt3.prometheus-server.x509
+
+- name: "Copia chave do peer etcd para o host prometheus"
+  template:
+    src: "{{ prometheus_etcd_peer_key_file }}"
+    dest: "{{ prometheus_base_dir }}/tls/etcd-peer-key.pem"
+    mode: 0444
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: "reload prometheus topic"
+  tags:
+    - kubetrt3.prometheus-server.x509
+
+- name: "Prometheus container (pull image)"
+  community.docker.docker_image:
+    name: prom/prometheus
+    tag: "{{ prometheus_version }}"
+    state: present
+    source: pull
+  tags:
+    - kubetrt3.prometheus-server.pull.image
+    - kubetrt3.prometheus-server.update
+
+- name: "Prometheus config file"
+  template:
+    src: "{{ prometheus_template }}"
+    dest: "{{ prometheus_base_dir }}/config/prometheus.yml"
+    backup: no
+  notify: "reload prometheus topic"
+  tags:
+    - kubetrt3.prometheus-server.cfg.copy
+    - kubetrt3.prometheus-server.update
+
+- name: "Prometheus testar config file"
+  command: "docker run --rm -it -v {{ prometheus_base_dir }}/config/prometheus.yml:/etc/prometheus/trt3/prometheus.yml:ro -v {{ prometheus_base_dir }}/tls:/etc/prometheus/tls:ro --entrypoint=promtool prom/prometheus:{{ prometheus_version }} check config /etc/prometheus/trt3/prometheus.yml"
+  register: prometheus_config_test_result
+  tags:
+    - kubetrt3.prometheus-server.test.config
+    - kubetrt3.prometheus-server.update
+    - never
+
+- name: "Prometheus start up"
+  community.docker.docker_container:
+    name: "{{ prometheus_container_name }}"
+    auto_remove: no
+    detach: yes
+    init: no
+    interactive: no
+    paused: no
+    privileged: no
+    read_only: no
+    memory: 0
+    # afetava: auto_remove, detach, init, interactive, memory, paused, privileged, read_only and tty options.
+    container_default_behavior: no_defaults
+    image: "prom/prometheus:{{prometheus_version}}"
+    command: "{{ prometheus_cmd }}"
+    state: started
+    recreate: no
+    restart: no
+    restart_policy: always
+    network_mode: "{{ 'bridge' if aux_docker_network_name is not defined else aux_docker_network_name }}"
+    networks:
+      - name: "{{ 'bridge' if aux_docker_network_name is not defined else aux_docker_network_name }}"
+    networks_cli_compatible: yes
+    log_driver: "{{ prometheus_docker_log_driver }}"
+    log_options: "{{ prometheus_docker_log_options }}"
+    etc_hosts: "{{ prometheus_etc_hosts }}"
+    volumes:
+      - "{{ prometheus_base_dir }}/config:/etc/prometheus/trt3:ro"
+      - "{{ prometheus_base_dir }}/storage:/prometheus"
+      - "{{ prometheus_base_dir }}/tls:/etc/prometheus/tls"
+    ports: "{{ prometheus_container_port_mappings }}" # todo: só faz sentido se não for atrás de um proxy !
+  #   labels:
+  #     traefik.http.routers.ui.rule: PathPrefix(`/prometheus`)
+  tags:
+    - kubetrt3.prometheus-server.start
+    - kubetrt3.prometheus-server.update
+
+- name: "Nginx"
+  import_tasks: nginx.yml
+  when: prometheus_use_nginx
+  tags:
+    - kubetrt3.prometheus-server.nginx

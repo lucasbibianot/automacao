@@ -1,0 +1,24 @@
+selinux_enable: true
+ntpd_interface_listen_range: 10.0.2.0/24
+ntpservers:
+  - pool pool.ntp.br iburst
+journald_storage: auto
+journald_storage_directory: /var/log/journal
+journald_split_mode: none
+journald_system_max_use: 512M
+# yum repos da role 'base-host'
+# ol7
+yum_repo_ol7_original: https://yum$ociregion.$ocidomain/repo/OracleLinux/OL7/latest/$basearch/ 
+yum_repo_ol7_proxy: http://10.0.2.2:9081/repository/oracle-public-yum-7/
+yum_repo_ol7_baseurl: "{{ yum_repo_ol7_original }}"
+# epel
+yum_repo_epel_original: http://dl.fedoraproject.org/pub/epel/$releasever/$basearch/
+yum_repo_epel_proxy: http://10.0.2.2:9081/repository/epel-7/
+yum_repo_epel_baseurl: "{{ yum_repo_epel_original }}"
+# prometheus-node-exporter
+yum_repo_prom_original: https://copr-be.cloud.fedoraproject.org/results/ibotty/prometheus-exporters/epel-7-$basearch/
+yum_repo_prom_proxy: http://10.0.2.2:9081/repository/prometheus-exporters/
+yum_repo_prom_baseurl: "{{ yum_repo_prom_original }}"
+#
+node_exporter_log_level: info
+node_exporter_ignored_mountpoints: "^/(dev|proc|sys|var/lib/docker/.+)($|/)"

@@ -1,0 +1,10 @@
+  - name: "Journald storage directory"
+    file:
+      path: "{{ journald_storage_directory }}"
+      state: directory
+
+  - name: "Journald config file"
+    template:
+      backup: yes
+      src: journald.conf
+      dest: /etc/systemd/journald.conf

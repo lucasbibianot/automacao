@@ -1,0 +1,20 @@
+- name: Configurar NTPd (ntp.conf)
+  template:
+     backup: yes
+     src: ntp.conf
+     dest: /etc/ntp.conf
+  notify: "base-host.ntpd.restart"
+
+- name: Configurar NTPd (sysconfig)
+  template:
+     backup: yes
+     src: etc_sysconfig_ntpd
+     dest: /etc/sysconfig/ntpd
+  notify: "base-host.ntpd.restart"
+
+- name: "Ativar NTPd"
+  service:
+     name: ntpd
+     enabled: yes
+     state: started
+  ignore_errors: "{{ ansible_check_mode }}"

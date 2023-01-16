@@ -1,0 +1,10 @@
+- name: "ADD trust anchors"
+  copy:
+    src: "files/{{ item }}"
+    dest: /etc/pki/ca-trust/source/anchors
+  loop: "{{ trustanchors }}"
+  when: trustanchors is defined
+  
+- name: "update-ca-trust extract"
+  command: "update-ca-trust extract"
+  when: trustanchors is defined

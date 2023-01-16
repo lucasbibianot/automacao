@@ -1,0 +1,32 @@
+prometheus_docker_log_driver: json-file
+prometheus_docker_log_options: 
+prometheus_template: prometheus.yml
+prometheus_use_nginx: true
+prometheus_nginx_version: 1.21.6-alpine
+prometheus_nginx_container_name: nginx
+prometheus_nginx_base_dir: "{{ prometheus_base_dir }}/nginx"
+prometheus_retention_time: 7d
+prometheus_prefix: prometheus
+# pode ser útil: https://prometheus.io/docs/prometheus/latest/feature_flags/
+prometheus_cmd:
+  - "--config.file=/etc/prometheus/trt3/prometheus.yml"
+  - "--storage.tsdb.path=/prometheus"
+  - "--storage.tsdb.retention.time={{ prometheus_retention_time }}"
+  - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+  - "--web.console.templates=/usr/share/prometheus/consoles"
+  - "--web.enable-admin-api"
+  - "--web.external-url=http://{{ node_name }}:{{ prometheus_nginx_container_port }}/{{ prometheus_prefix }}"
+  - "--web.route-prefix=/{{ prometheus_prefix }}"
+  - "--enable-feature=promql-at-modifier"
+prometheus_base_dir: /opt/prometheus
+prometheus_version: v2.36.2
+prometheus_container_port: 9090
+prometheus_nginx_port: 9090
+prometheus_nginx_container_port: 9090
+prometheus_nginx_exposed_ports:
+  - "{{ prometheus_nginx_port }}"
+prometheus_container_port_mappings:
+prometheus_nginx_container_port_mappings:
+  - "{{ prometheus_nginx_port }}:{{ prometheus_nginx_container_port }}"
+prometheus_node_exporter_port: 9100
+prometheus_etc_hosts:

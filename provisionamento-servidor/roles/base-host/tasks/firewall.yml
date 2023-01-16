@@ -1,0 +1,16 @@
+##
+## TODO: basear em flags de controle no inventario (firewalld? iptables? regras ?)
+##
+- name: Desativar firewalld
+  service:
+    name: firewalld
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Desativar iptables-service
+  service:
+    name: iptables
+    enabled: no
+    state: stopped
+  ignore_errors: yes

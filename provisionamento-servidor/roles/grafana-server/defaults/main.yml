@@ -1,0 +1,20 @@
+grafana_base_dir: /opt/grafana
+grafana_version: 8.5.15
+grafana_docker_log_driver: json-file
+grafana_docker_log_options: 
+grafana_http_container_port: 3000
+grafana_http_host_port: 3000
+grafana_container_ports:
+  - "{{ grafana_http_container_port }}"
+grafana_container_port_mappings:
+#  - "{{ grafana_http_host_port }}:{{ grafana_http_container_port }}"  ... prefere o aux-proxy
+grafana_admin_password: "grafana"
+grafana_admin_user: "admin"
+grafana_paths_data: /var/lib/grafana
+grafana_create_user: true
+grafana_use_ldap: false
+grafana_config_file: grafana.ini
+grafana_ldap_config_file:
+grafana_domain: "localhost"
+grafana_root_url: "http://localhost"
+grafana_container_labels:

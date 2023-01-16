@@ -1,0 +1,35 @@
+# Não usar loop
+#
+# DE: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/yum_module.html
+#
+#
+#     When used with a loop: each package will be processed individually,
+#     it is much more efficient to pass the list directly to the name option.
+#
+- name: "BASIC PACKAGES FOR ALL HOSTS"
+  yum:
+    name:
+      - bridge-utils
+      - bind-utils
+      - tcpdump
+      - nmap
+      - nmap-ncat
+      - telnet
+      - ntpdate
+      - ntp
+      - unzip
+      - vim
+      - rsync
+      - socat
+      - sg3_utils
+      - device-mapper-multipath
+      - setools-console
+      - jq
+      - lsof
+      - bash-completion
+      # - iscsi-initiator-utils
+      # - wireguard-tools
+      # - kmod-wireguard
+      - gettext
+      - git
+    state: present

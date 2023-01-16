@@ -1,0 +1,1 @@
+OPTIONS="--log.level=\"{{ node_exporter_log_level }}\" --collector.filesystem.ignored-mount-points=\"{{ node_exporter_ignored_mountpoints }}\" --collector.textfile.directory /var/lib/node_exporter/textfile_collector --collector.ntp --collector.systemd"

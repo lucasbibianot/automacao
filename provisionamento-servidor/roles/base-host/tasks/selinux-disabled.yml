@@ -1,0 +1,6 @@
+- name: Desativar SELINUX (state)
+  selinux:
+    state: disabled
+  ignore_errors: yes
+  tags:
+    - selinux.disabled

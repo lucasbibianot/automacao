@@ -1,0 +1,17 @@
+docker_version: 19.03.15-3.el7
+# TODO: investigar erro de dep para 20.10
+# 
+# Error: Package: docker-ce-rootless-extras-20.10.12-3.el7.x86_64 (Docker)
+#           Requires: slirp4netns >= 0.4
+# Error: Package: docker-ce-rootless-extras-20.10.12-3.el7.x86_64 (Docker)
+#           Requires: fuse-overlayfs >= 0.7
+# You could try using --skip-broken to work around the problem
+# You could try running: rpm -Va --nofiles --nodigest
+#
+#docker_version: 20.10.12-3.el7
+docker_logging_max_size: 16m
+docker_logging_max_file: 2
+# repositorio yum da docker
+yum_repo_docker_original: https://download.docker.com/linux/centos/7/x86_64/stable
+yum_repo_docker_proxy: http://10.0.2.2:9081/repository/docker/
+yum_repo_docker_baseurl: "{{ yum_repo_docker_original }}"

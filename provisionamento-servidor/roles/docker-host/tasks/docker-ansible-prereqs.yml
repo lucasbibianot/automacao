@@ -1,0 +1,24 @@
+- name: "docker.ansible.prereq: Garantir que pip3 esteja instalado"
+  ansible.builtin.yum:
+    name: python3-pip
+    state: present
+
+- name: "docker.ansible.prereq: Atualizar pip"
+  command: /bin/pip3 install --upgrade pip
+
+# TODO: checar versão do pip3 contra um "mínimo" definido em variável ?  
+  
+- name: "docker.ansible.prereq: Instalar (lib) docker (python/ansible)"
+  ansible.builtin.pip:
+    name: docker
+    #version: ?
+    executable: /bin/pip3
+    extra_args: --trusted-host pypi.python.org --trusted-host files.pythonhosted.org 
+
+- name: "docker.ansible.prereq: Instalar pyOpenSSL (python/ansible)"
+  ansible.builtin.pip:
+    name: pyOpenSSL
+    #version: ?
+    executable: /bin/pip3
+    extra_args: --trusted-host pypi.python.org --trusted-host files.pythonhosted.org
+

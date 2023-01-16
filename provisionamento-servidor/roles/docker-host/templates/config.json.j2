@@ -1,0 +1,17 @@
+{
+        "auths": {
+                "registry.trt3.jus.br": {
+                        {{ docker_registry_trt3_credentials }}
+                }                
+{% if registries is defined %}
+{% for registry in registries %} 
+                ,"{{ registry.name }}": { 
+                        "auth": "{{ registry.auth }}"
+                }
+{% endfor %}
+{% endif %}
+        },
+        "HttpHeaders": {
+                "User-Agent": "Docker-Client/18.06.3-ce (linux)"
+        }
+}

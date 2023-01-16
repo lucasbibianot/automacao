@@ -1,0 +1,43 @@
+- name: "nfsmount.conf"
+  template:
+    src: "nfsmount.conf"
+    dest: "/etc/nfsmount.conf"
+  tags: kubetrt3.nfsmount
+
+- name: "nfs rpms"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nfs-utils
+  tags: kubetrt3.nfsmount
+
+- name: "verifica se o diretório {{ nfs_dir }} já existe"
+  stat:
+    path: "{{ nfs_dir }}"
+  register: nfs_folder
+  when: nfs_dir is defined
+  tags: kubetrt3.nfsmount
+
+- name: "criar o diretório {{ nfs_dir }} de montagem"
+  file:
+    path: "{{ nfs_dir }}"
+    state: directory
+    mode: 0755
+    group: root
+    owner: root
+  when: nfs_dir is defined and nfs_folder.stat.exists == false
+  tags: kubetrt3.nfsmount
+
+- name: Monta os exporters NFS
+  mount:
+    fstype: nfs
+    opts: rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys
+    dump: 0
+    passno: 0
+    state: mounted
+    src: "{{ item.src }}"
+    path: "{{ item.path }}"
+  with_items: "{{ nfsmounts }}"
+  when: nfsmounts is defined
+  tags: kubetrt3.nfsmount

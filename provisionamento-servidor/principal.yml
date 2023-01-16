@@ -1,0 +1,16 @@
+- name: "PB:AUX"
+  hosts: principal
+  vars:
+    - ansible_python_interpreter: "/bin/python3"
+    - k3s_become: true
+  tasks:
+    - name: Base host
+      import_role:
+        name: base-host
+      tags:
+        - base-host
+    - name: k3s
+      import_role:
+        name: xanmanning.k3s
+      tags:
+        - k3s

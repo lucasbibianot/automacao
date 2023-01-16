@@ -1,0 +1,14 @@
+cadvisor_container_name: cadvisor
+cadvisor_image: gcr.io/cadvisor/cadvisor
+cadvisor_version: v0.39.3
+#cadvisor_base_dir: /opt/cadvisor
+#cadvisor_host_auth_path: "{{ cadvisor_base_dir }}/auth"
+cadvisor_http_container_port: 8080
+cadvisor_http_host_port: 8080
+cadvisor_container_ports:
+  - "{{ cadvisor_http_container_port }}"
+cadvisor_container_port_mappings:
+#  - "{{ cadvisor_http_host_port }}:{{ cadvisor_http_container_port }}"  ... prefere o aux-proxy
+cadvisor_container_envs:
+cadvisor_container_labels:
+cadvisor_path_prefix:

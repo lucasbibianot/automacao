@@ -1,0 +1,83 @@
+- name: "ADD LIBSELINUX (up to rh 7)"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - libselinux-python3
+    - selinux-policy
+  tags:
+    - base-host.selinux
+
+- name: "SELinux (DISABLED)"
+  import_tasks: tasks/selinux-disabled.yml
+  tags:
+    - base-host.selinuxd-disable
+
+- name: "INSTALA TRUST ANCHORS"
+  import_tasks: tasks/trustanchors.yml
+  tags:
+    - base-host.trustanchors
+
+- name: "CONFIGURA REPOSITORIO EPEL"
+  yum:
+    name:
+      - epel-release
+    state: latest
+  tags:
+    - base-host.yum.repo.epel
+
+# TODO: prometheus node exporter talvez possa ser uma role
+- name: "Prometheus node exporter"
+  import_tasks: tasks/prometheus-node-exporter.yml
+  tags:
+    - base-host.prom.node.exporter
+
+- name: "YUM UPDATE (EXCETO CONTAINER RUNTIME (DOCKER), KUBERNETES E KERNEL)"
+  yum:
+    name: "*"
+    exclude: docker-ce,docker-ce-cli,kubectl,kubelet,kubeadm,kubernetes-cni,kernel,kernel-uek
+    state: latest
+  tags:
+    - base-host.yumupdate
+
+- name: "ATUALIZA PACKAGE TZDATE"
+  yum:
+    name: tzdata
+    state: latest
+  tags:
+    - base-host.tz
+
+- name: "INSTALA PACKAGES COMUNS"
+  import_tasks: tasks/packages.yml
+  tags:
+    - base-host.packages
+
+- name: "Crontab"
+  import_tasks: tasks/crontab.yml
+  tags:
+    - base-host.crontab
+    - never
+
+- name: "Ntp"
+  import_tasks: tasks/ntp.yml
+  tags:
+    - base-host.ntp
+
+- name: "Firewall"
+  import_tasks: tasks/firewall.yml
+  tags:
+    - base-host.firewall
+
+- name: "Journald"
+  import_tasks: tasks/journald.yml
+  tags:
+    - base-host.journald
+
+- name: Inlcui arquivos para logrotate
+  template:
+    src: "{{ item.src }}"
+    dest: "/etc/logrotate.d/{{ item.dest_filename }}"
+  loop: "{{ logrotate_entries }}"
+  when: logrotate_entries is defined
+  tags:
+    - base-host.logrotate

@@ -1,0 +1,37 @@
+  - name: "REPO: COPIAR PROMETHEUS NODE EXPORTER"
+    yum_repository:
+      name: prom-node-exporter
+      description: "PROM NODE EXPORTER"
+      baseurl: "{{ yum_repo_prom_baseurl }}"
+      gpgkey: https://copr-be.cloud.fedoraproject.org/results/ibotty/prometheus-exporters/pubkey.gpg
+      gpgcheck: no
+      sslverify: no
+    tags:
+      - base-host.prom.node.exporter.repo
+
+  - name: Instalar o node exporter (prometheus)
+    yum:
+      name: golang-github-prometheus-node_exporter # uses /etc/sysconfig/node_exporter
+      state: present
+    tags:
+      - prometheus_node_exporter
+
+  - name: Copia o arquivo de configuracao do node exporter (prometheus)
+    template:
+      src:  node_exporter
+      dest: /etc/sysconfig/node_exporter
+      mode: 0644
+      owner: root
+      group: root
+    notify: base-host.prom.node.exporter.restart
+    tags:
+      - base-host.prom.node.exporter.config
+
+  - name: Ativar servico node exporter (prometheus)
+    service:
+       name: node_exporter
+       enabled: yes
+       state: started
+    ignore_errors: "{{ ansible_check_mode }}"
+    tags:
+      - base-host.prom.node.exporter.start

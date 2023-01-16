@@ -1,0 +1,17 @@
+selinux_enable: true
+docker_version: 19.03.15-3.el7
+geral_template_entries:
+  - {
+      src: "prometheus_ntpdate_to_textfile.sh",
+      fulldest: "/root/ntpdate_to_textfile.sh",
+      mode: "0750",
+    }
+crontab_entries:
+  - {
+      state: "present",
+      name: "ntpdate.to.textfile.collector",
+      user: "root",
+      hour: "*",
+      minute: "*",
+      job: "/root/ntpdate_to_textfile.sh >> /dev/null",
+    }

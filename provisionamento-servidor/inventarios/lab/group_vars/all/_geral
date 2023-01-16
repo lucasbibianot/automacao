@@ -1,0 +1,2 @@
+ansible_user: root
+ntpd_interface_listen_range: 181.215.134.0/24

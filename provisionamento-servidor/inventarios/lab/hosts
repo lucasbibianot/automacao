@@ -1,0 +1,3 @@
+[principal]
+principal-node ansible_host=lets-iot.online node_name=principal-node
+

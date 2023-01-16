@@ -1,0 +1,12 @@
+- name: "Custom crontab entries"
+  cron:
+    name: "{{ item.name }}"
+    minute: "{{ item.minute  }}"
+    hour: "{{ item.hour }}"
+    state: "{{ item.state }}"
+    user: "{{ item.user }}"
+    job: "{{ item.job }}"
+  loop: "{{ crontab_entries }}"
+  when: crontab_entries is defined
+  tags:
+    - crontab

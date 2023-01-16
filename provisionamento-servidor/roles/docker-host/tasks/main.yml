@@ -1,0 +1,128 @@
+- name: "Instala libs que os modulos ansible precisam para usar o docker"
+  import_tasks: docker-ansible-prereqs.yml
+  tags:
+    - kubetrt3.docker-host.ansible-prereqs
+  
+- name: "Configura repositório yum da docker.com"
+  ansible.builtin.yum_repository:
+      name: Docker
+      description: Docker YUM repository
+      baseurl: "{{ yum_repo_docker_baseurl }}"
+      gpgcheck: no
+      sslverify: no
+  tags:
+    - kubetrt3.docker-host.yum-repo
+
+- name: "Instalar DOCKER-CE e dependências"
+  ansible.builtin.yum:
+    name:
+      - device-mapper-persistent-data
+      - lvm2
+      - docker-ce-cli-{{ docker_version }}
+      - docker-ce-{{ docker_version }}
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags:
+    - kubetrt3.docker-host.install-docker-ce
+  
+# TODO: maybe try a different approach like 
+#       copiado na role 'node'
+#
+#   https://docs.ansible.com/ansible/latest/collections/community/docker/docker_login_module.html (see: config_path)
+- name: "Adicionar credenciais para registry interno (para o root) (cria diretório)"
+  ansible.builtin.file:
+    name: "/root/.docker"
+    state: directory
+  tags:
+    - kubetrt3.docker-host.config.json.for.root
+
+- name: "Adicionar credenciais para registry interno (para o root) (aplica template)"
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /root/.docker/config.json
+  tags:
+    - kubetrt3.docker-host.config.json.for.root
+    
+- name: "Aplicar versionlock ao DOCKER-CE"
+  community.general.yum_versionlock:
+    name:
+      - docker-ce-cli
+      - docker-ce
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"    
+  tags:
+      - kubetrt3.docker-host.versionlock
+    
+- name: "sys: modprobe: load br_netfilter module"
+  ansible.builtin.modprobe:
+      name: br_netfilter
+      state: present
+  tags:
+    - kubetrt3.docker-host.sys
+
+- name: "sys: ensure net.bridge.bridge-nf-call-iptables is set to 1"
+  ansible.builtin.sysctl:
+      name: net.bridge.bridge-nf-call-iptables
+      value: 1
+      state: present    
+  tags:
+    - kubetrt3.docker-host.sys
+
+- name: "sys: ensure net.bridge.bridge-nf-call-ip6tables is set to 1"
+  ansible.builtin.sysctl:
+      name: net.bridge.bridge-nf-call-ip6tables
+      value: 1
+      state: present    
+  tags:
+    - kubetrt3.docker-host.sys
+
+- name: "Cria se preciso o diretorio de configuracao do daemon docker"
+  ansible.builtin.file:
+      path: /etc/docker
+      state: directory
+  tags:
+    - kubetrt3.docker-host.daemon-config
+
+- name: "Aplica template com a configuracao do daemon docker (incluindo insecure_registries)"
+  ansible.builtin.template:
+      src: daemon.json
+      dest: /etc/docker/daemon.json
+  tags:
+    - kubetrt3.docker-host.daemon-config
+
+- name: "Certificados confiáveis: criar diretório /etc/docker/certs.d"
+  ansible.builtin.file:
+    path: /etc/docker/certs.d
+    state: directory
+  when: docker_certs_trusted_certs is defined
+  tags:
+    - kubetrt3.docker-host.trusted-certs
+    - kubetrt3.docker-host.daemon-config
+
+- name: "Certificados confiáveis: criar diretórios sob /etc/docker/certs.d"
+  ansible.builtin.file:
+    path: "/etc/docker/certs.d/{{ item.dir }}"
+    state: directory
+  when: docker_certs_trusted_certs is defined
+  loop: "{{ docker_certs_trusted_certs }}"
+  tags:
+    - kubetrt3.docker-host.trusted-certs
+    - kubetrt3.docker-host.daemon-config
+
+- name: "Certificados confiáveis: instala certificados sob /etc/docker/certs.d"
+  ansible.builtin.copy:
+    src: "{{ item.file }}"
+    dest: "/etc/docker/certs.d/{{ item.dir }}"
+  when: docker_certs_trusted_certs is defined
+  loop: "{{ docker_certs_trusted_certs }}"
+  tags:
+    - kubetrt3.docker-host.trusted-certs
+    - kubetrt3.docker-host.daemon-config
+
+- name: "Ativar e rodar docker daemon service"
+  ansible.builtin.service:
+      name: docker
+      enabled: yes
+      state: started
+  ignore_errors: "{{ ansible_check_mode }}"
+

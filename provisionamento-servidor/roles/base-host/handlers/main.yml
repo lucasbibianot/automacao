@@ -1,0 +1,11 @@
+- name: "Restart prometheus node exporter service"
+  ansible.builtin.service:
+    name: node_exporter
+    state: restarted
+  listen: "base-host.prom.node.exporter.restart"
+
+- name: "Restart ntpd service"
+  ansible.builtin.service:
+    name: ntpd
+    state: restarted
+  listen: "base-host.ntpd.restart"
